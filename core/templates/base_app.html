@@ -1,0 +1,86 @@
+{% extends 'base.html' %}
+{% load static %}
+{% block body %}
+<div class="app-layout">
+  <aside class="sidebar">
+    <div class="sidebar-logo">
+      <div class="sidebar-logo-icon">🏦</div>
+      <div class="sidebar-logo-text">
+        <h2>BankApp</h2>
+        <p>Secure Banking</p>
+      </div>
+    </div>
+    <div class="sidebar-user">
+      <div class="sidebar-avatar">{{ user.first_name|first|upper }}{{ user.last_name|first|upper }}</div>
+      <div class="sidebar-user-info">
+        <div class="name">{{ user.get_full_name|default:user.username|truncatechars:20 }}</div>
+        <div class="role">{{ user.get_role_display }}</div>
+      </div>
+    </div>
+
+    {% if user.role == 'nasabah' %}
+    <div class="sidebar-section">Menu</div>
+    <a href="{% url 'nasabah_dashboard' %}" class="nav-item {% if request.resolver_match.url_name == 'nasabah_dashboard' %}active{% endif %}">
+      <span class="nav-icon">🏠</span> Dashboard
+    </a>
+    <a href="{% url 'transfer' %}" class="nav-item {% if request.resolver_match.url_name == 'transfer' %}active{% endif %}">
+      <span class="nav-icon">💸</span> Transfer
+    </a>
+    <a href="{% url 'mutasi' %}" class="nav-item {% if request.resolver_match.url_name == 'mutasi' %}active{% endif %}">
+      <span class="nav-icon">📋</span> Mutasi Rekening
+    </a>
+    <a href="{% url 'search_account' %}" class="nav-item {% if request.resolver_match.url_name == 'search_account' %}active{% endif %}">
+      <span class="nav-icon">🔍</span> Cari Rekening
+    </a>
+
+    {% elif user.role == 'teller' %}
+    <div class="sidebar-section">Menu</div>
+    <a href="{% url 'teller_dashboard' %}" class="nav-item {% if request.resolver_match.url_name == 'teller_dashboard' %}active{% endif %}">
+      <span class="nav-icon">🏠</span> Dashboard
+    </a>
+    <a href="{% url 'topup' %}" class="nav-item {% if request.resolver_match.url_name == 'topup' %}active{% endif %}">
+      <span class="nav-icon">💰</span> Top Up Nasabah
+    </a>
+
+    {% elif user.role == 'supervisor' %}
+    <div class="sidebar-section">Menu</div>
+    <a href="{% url 'supervisor_dashboard' %}" class="nav-item {% if request.resolver_match.url_name == 'supervisor_dashboard' %}active{% endif %}">
+      <span class="nav-icon">🏠</span> Dashboard
+    </a>
+    <a href="{% url 'manage_accounts' %}" class="nav-item {% if request.resolver_match.url_name == 'manage_accounts' %}active{% endif %}">
+      <span class="nav-icon">👥</span> Kelola Rekening
+    </a>
+    {% endif %}
+
+    <div class="sidebar-footer">
+      <form method="post" action="{% url 'logout' %}">
+        {% csrf_token %}
+        <button type="submit" class="logout-btn">
+          <span class="nav-icon">🚪</span> Logout
+        </button>
+      </form>
+    </div>
+  </aside>
+
+  <div class="main-content">
+    <div class="topbar">
+      <div class="topbar-left">
+        <h1>{% block page_title %}{% endblock %}</h1>
+        <p>{% block page_subtitle %}{% endblock %}</p>
+      </div>
+      <div class="topbar-right">
+        <span class="topbar-badge"><span class="dot"></span>Aman & Terenkripsi</span>
+      </div>
+    </div>
+    <div class="content-area">
+      {% for message in messages %}
+        <div class="alert alert-{% if message.tags == 'error' %}error{% elif message.tags == 'success' %}success{% elif message.tags == 'warning' %}warning{% else %}info{% endif %}">
+          <span class="alert-icon">{% if message.tags == 'error' %}⚠️{% elif message.tags == 'success' %}✅{% else %}ℹ️{% endif %}</span>
+          <span>{{ message }}</span>
+        </div>
+      {% endfor %}
+      {% block content %}{% endblock %}
+    </div>
+  </div>
+</div>
+{% endblock %}
