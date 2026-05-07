@@ -1,3 +1,4 @@
+# uncomment import yang dirasa perlu ya guys (notes dari bion)
 from django.shortcuts import render, redirect
 # from django.shortcuts import get_object_or_404
 from django.contrib.auth import authenticate, login, logout
@@ -7,10 +8,12 @@ from django.contrib import messages
 # from django.db import transaction as db_transaction
 from django.core.exceptions import PermissionDenied
 from django.db.models import Q
-from .models import User, Transaction 
+# from .models import User
+from .models import Transaction 
 from .models import LoginAttempt , Account 
 from .forms import LoginForm, RegisterForm
-from .forms import TransferForm, TopUpForm, AccountSearchForm
+# from .forms import TransferForm, TopUpForm
+from .forms import AccountSearchForm
 from .middleware import get_client_ip
 import random
 

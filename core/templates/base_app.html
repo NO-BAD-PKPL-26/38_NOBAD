@@ -23,9 +23,13 @@
     <a href="{% url 'nasabah_dashboard' %}" class="nav-item {% if request.resolver_match.url_name == 'nasabah_dashboard' %}active{% endif %}">
       <span class="nav-icon">🏠</span> Dashboard
     </a>
+    {% comment %} ini nanti di uncomment kalau fitur transfer sudah selesai, biar ga muncul link mati di dashboard nasabah
+     <a href="{% url 'transfer' %}" class="nav-item {% if request.resolver_match.url_name == 'transfer' %}active{% endif %}">
+      <span class="nav-icon">💸</span> Transfer
     <a href="{% url 'transfer' %}" class="nav-item {% if request.resolver_match.url_name == 'transfer' %}active{% endif %}">
       <span class="nav-icon">💸</span> Transfer
     </a>
+    {% endcomment %}
     <a href="{% url 'mutasi' %}" class="nav-item {% if request.resolver_match.url_name == 'mutasi' %}active{% endif %}">
       <span class="nav-icon">📋</span> Mutasi Rekening
     </a>

@@ -26,11 +26,11 @@
 <div class="quick-actions">
   {# Quick action buttons: transfer, mutasi, cari rekening #}
   {# Semua link aman karena menggunakan {% url %} django tag #}
-  <a href="{% url 'transfer' %}" class="action-card blue">
-    <div class="ac-icon">💸</div>
-    <div class="ac-label">Transfer</div>
-    <div class="ac-sub">Kirim uang</div>
-  </a>
+  {% comment %} ini nanti di uncomment kalau fitur transfer sudah selesai, biar ga muncul link mati di dashboard nasabah
+    <a href="{% url 'transfer' %}" class="nav-item {% if request.resolver_match.url_name == 'transfer' %}active{% endif %}">
+      <span class="nav-icon">💸</span> Transfer
+    </a>
+  {% endcomment %}
   <a href="{% url 'mutasi' %}" class="action-card green">
     <div class="ac-icon">📋</div>
     <div class="ac-label">Mutasi</div>
