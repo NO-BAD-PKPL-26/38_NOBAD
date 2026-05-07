@@ -99,19 +99,16 @@ def dashboard_view(request):
     return redirect('login')
 
 
-# ── Nasabah (Orang 3) ────────────────────────────────────────────────────────
-# Fitur: Dashboard, Mutasi, Cari Rekening
-# TC-SQLi-02 (search injection), TC-SQLi-03 (code review)
-# Test: MT-1, MT-2, TC-CI-03, TC-SQLi-02, TC-SQLi-03
+# ── Nasabah ───────────────────────────────────────────────────────────────────
 
 @login_required
 @role_required('nasabah')
 def nasabah_dashboard(request):
-    # [Orang 3] DASHBOARD: tampilkan saldo + 5 transaksi terakhir
+    # Menampilkan saldo + 5 transaksi terakhir
     # Least privilege: hanya bisa akses dashboard milik sendiri (via @role_required)
     account = get_or_create_account(request.user)  # Ambil/buat akun nasabah dari user
     # Query transaksi: filter masuk (to_account) ATAU keluar (from_account)
-    # PENTING: pakai ORM .filter() BUKAN raw SQL — aman dari SQL injection (TC-SQLi-03)
+    # Memakai ORM .filter() BUKAN raw SQL — aman dari SQL injection (TC-SQLi-03)
     recent = (
         Transaction.objects.filter(from_account=account) |  # Transaksi keluar (debit)
         Transaction.objects.filter(to_account=account)      # Transaksi masuk (kredit)
@@ -129,7 +126,7 @@ def nasabah_dashboard(request):
 @login_required
 @role_required('nasabah')
 def mutasi_view(request):
-    # [Orang 3] MUTASI: tampilkan SEMUA riwayat transaksi nasabah (masuk & keluar)
+    # Menampilkan SEMUA riwayat transaksi nasabah (masuk & keluar)
     # Berbeda dengan dashboard yg hanya 5 terakhir, mutasi tampil semua history
     account = get_or_create_account(request.user)  # Ambil akun nasabah
     # Query ORM — parameterized otomatis, tidak bisa SQL injection (TC-SQLi-03)
@@ -147,34 +144,27 @@ def mutasi_view(request):
 @login_required
 @role_required('nasabah')
 def search_account_view(request):
-    # [Orang 3] CARI REKENING: search bar untuk cari rekening orang lain
-    # TC-SQLi-02: VULNERABLE = raw SQL concat (UNION injection possible)
-    # TC-SQLi-02: SECURE = AccountSearchForm + ORM Q objects (parameterized)
-    # Input method: GET (REST convention untuk search/read-only)
-    form = AccountSearchForm(request.GET or None)  # Ambil form dari GET params
-    results = []  # Hasil search (empty jika belum cari atau invalid)
-    query = ''    # Search query yang user input
-    # Validasi form — jika valid, ambil query & cari via ORM
+    """
+    TC-SQLi-02: Search bar with ORM — no raw SQL, no UNION injection possible.
+    Input validated by AccountSearchForm before reaching ORM.
+    """
+    # Cari Rekening: search bar dengan ORM (TC-SQLi-02 — UNION injection safe)
+    # Form input divalidasi terlebih dahulu sebelum ORM query
+    form = AccountSearchForm(request.GET or None)
+    results = []
+    query = ''
     if form.is_valid():
-        # Ambil query dari form (sudah divalidasi via validate_no_injection)
-        # validate_no_injection() blok: <script, javascript:, {}, {%, dll (CWE-79, CWE-94)
         query = form.cleaned_data.get('query', '')
-        if query:  # Jika ada query (tidak kosong)
-            # ORM Q objects dengan icontains — PARAMETERIZED query otomatis
-            # AMAN dari UNION injection: ' UNION SELECT username, password ... --
+        if query:
+            # ORM Q objects — parameterized query otomatis, jadi aman dari SQL injection
             results = Account.objects.filter(
-                Q(account_number__icontains=query) |    # Cari by nomor rekening
-                Q(user__first_name__icontains=query) |  # Cari by nama depan
-                Q(user__last_name__icontains=query),    # Cari by nama belakang
-                is_active=True  # Hanya rekening aktif
-            ).exclude(user=request.user) \
-            .select_related('user')  # Optimize: ambil user data sekalian
-            results = results[:10]  # Limit 10 hasil (untuk performa)
-    # Return: render template dengan form, results, & query
+                Q(account_number__icontains=query) |
+                Q(user__first_name__icontains=query) |
+                Q(user__last_name__icontains=query),
+                is_active=True
+            ).exclude(user=request.user).select_related('user')[:10]
     return render(request, 'nasabah/search_account.html', {
-        'form': form,       # Form untuk ditampilkan di template
-        'results': results, # List hasil search
-        'query': query      # Query yang dicari (untuk info di template)
+        'form': form, 'results': results, 'query': query
     })
 
 # ── Teller ────────────────────────────────────────────────────────────────────
