@@ -1,13 +1,26 @@
 {% extends 'base.html' %}
+{% load static %}
 {% block title %}Login — BankApp Secure{% endblock %}
 {% block body %}
 <div class="auth-wrapper">
-  <div class="auth-left">
+  <div class="auth-left"
+     style="
+      background:
+        linear-gradient(rgba(0,0,0,0.55), rgba(0,0,0,0.55)),
+        url('{% static "img/image.png" %}') center/cover no-repeat;
+      position: relative;
+      overflow: hidden;">
     <div class="auth-brand">
       <div class="auth-brand-icon">🏦</div>
       <h1>BankApp Secure</h1>
       <p>Mobile Banking Application</p>
     </div>
+    <div class="created-by"
+     style="position:relative; z-index:999; color:#fff !important;">
+  © 2025 —
+  <strong style="color:#fff !important;">NOBAD</strong>
+
+</div>
     <div class="auth-features">
       <div class="auth-feature"><div class="auth-feature-icon">🔐</div><span>Password terenkripsi PBKDF2-SHA256</span></div>
       <div class="auth-feature"><div class="auth-feature-icon">🛡️</div><span>Proteksi CSRF di setiap form</span></div>

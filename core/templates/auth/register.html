@@ -1,43 +1,120 @@
 {% extends 'base.html' %}
+{% load static %}
+
 {% block title %}Daftar — BankApp Secure{% endblock %}
+
 {% block body %}
 <div class="auth-wrapper">
-  <div class="auth-left">
+
+  <div class="auth-left"
+       style="
+        background:
+          linear-gradient(rgba(0,0,0,0.55), rgba(0,0,0,0.55)),
+          url('{% static "img/image.png" %}') center/cover no-repeat;
+        position: relative;
+        overflow: hidden;
+">
+
     <div class="auth-brand">
       <div class="auth-brand-icon">🏦</div>
       <h1>BankApp Secure</h1>
       <p>Buat akun baru</p>
     </div>
-    <div class="auth-features">
-      <div class="auth-feature"><div class="auth-feature-icon">👤</div><span>Akun nasabah pribadi</span></div>
-      <div class="auth-feature"><div class="auth-feature-icon">💳</div><span>Nomor rekening otomatis</span></div>
-      <div class="auth-feature"><div class="auth-feature-icon">🔐</div><span>Password dienkripsi aman</span></div>
+
+    <div class="created-by"
+         style="
+            position:relative;
+            z-index:999;
+            color:#fff !important;
+            margin-top:24px;
+            font-size:13px;
+            letter-spacing:.5px;
+         ">
+      © 2025 —
+      <strong style="color:#fff !important;">NOBAD</strong>
     </div>
+
+    <div class="auth-features">
+      <div class="auth-feature">
+        <div class="auth-feature-icon">👤</div>
+        <span>Akun nasabah pribadi</span>
+      </div>
+
+      <div class="auth-feature">
+        <div class="auth-feature-icon">💳</div>
+        <span>Nomor rekening otomatis</span>
+      </div>
+
+      <div class="auth-feature">
+        <div class="auth-feature-icon">🔐</div>
+        <span>Password dienkripsi aman</span>
+      </div>
+    </div>
+
   </div>
+
   <div class="auth-right">
     <div class="auth-card" style="max-width:460px;">
+
       <div class="auth-card-header">
         <h2>Daftar Nasabah Baru</h2>
         <p>Isi data diri Anda dengan benar</p>
       </div>
+
       {% for message in messages %}
-        <div class="alert alert-{{ message.tags|default:"info" }}"><span class="alert-icon">ℹ️</span><span>{{ message }}</span></div>
+        <div class="alert alert-{{ message.tags|default:"info" }}">
+          <span class="alert-icon">ℹ️</span>
+          <span>{{ message }}</span>
+        </div>
       {% endfor %}
+
       <form method="post">
         {% csrf_token %}
+
         {% for field in form %}
         <div class="form-group">
-          <label class="form-label">{{ field.label }}</label>
+
+          <label class="form-label">
+            {{ field.label }}
+          </label>
+
           {{ field }}
-          {% if field.errors %}<ul class="errorlist">{% for e in field.errors %}<li>{{ e }}</li>{% endfor %}</ul>{% endif %}
+
+          {% if field.errors %}
+          <ul class="errorlist">
+            {% for e in field.errors %}
+              <li>{{ e }}</li>
+            {% endfor %}
+          </ul>
+          {% endif %}
+
         </div>
         {% endfor %}
-        <button type="submit" class="btn btn-primary btn-full" style="margin-top:8px;">✅ Buat Akun</button>
+
+        <button type="submit"
+                class="btn btn-primary btn-full"
+                style="margin-top:8px;">
+          ✅ Buat Akun
+        </button>
+
       </form>
-      <p style="text-align:center;margin-top:20px;font-size:13px;color:var(--text-secondary);">
-        Sudah punya akun? <a href="{% url 'login' %}" style="color:var(--primary-light);font-weight:600;">Login di sini</a>
+
+      <p style="
+          text-align:center;
+          margin-top:20px;
+          font-size:13px;
+          color:var(--text-secondary);
+      ">
+        Sudah punya akun?
+
+        <a href="{% url 'login' %}"
+           style="color:var(--primary-light);font-weight:600;">
+          Login di sini
+        </a>
       </p>
+
     </div>
   </div>
+
 </div>
 {% endblock %}
