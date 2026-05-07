@@ -1,0 +1,48 @@
+{% extends 'base_app.html' %}
+{% block title %}Cari Rekening{% endblock %}
+{% block page_title %}Cari Rekening{% endblock %}
+{% block page_subtitle %}Cari nomor rekening sebelum transfer{% endblock %}
+{% block content %}
+{# Halaman Cari Rekening: search bar dengan ORM — aman dari SQL injection (TC-SQLi-02) #}
+<div style="max-width:640px;">
+  <div class="card">
+    <div class="card-title" style="margin-bottom:16px;">Pencarian Rekening (TC-SQLi-02)</div>
+    {# Form search — method GET sesuai REST convention #}
+    {# Input divalidasi AccountSearchForm sebelum ORM query #}
+    <form method="get">
+      <div class="search-box">
+        <div class="form-group">
+          <label class="form-label">Nama nasabah atau nomor rekening</label>
+          {{ form.query }}
+          {% if form.query.errors %}<ul class="errorlist">{% for e in form.query.errors %}<li>{{ e }}</li>{% endfor %}</ul>{% endif %}
+        </div>
+        <button type="submit" class="btn btn-primary" style="white-space:nowrap;">🔍 Cari</button>
+      </div>
+    </form>
+    {% if query %}
+      {% if results %}
+        {# Hasil search — data dari ORM dengan select_related untuk optimize query #}
+        <p style="font-size:13px;color:var(--text-muted);margin-bottom:12px;">Ditemukan {{ results|length }} hasil untuk "{{ query }}"</p>
+        {% for acc in results %}
+        <div class="result-card">
+          <div>
+            <div style="font-weight:600;font-size:14px;">{{ acc.user.get_full_name|default:acc.user.username }}</div>
+            <div style="font-size:12px;color:var(--text-muted);margin-top:3px;">No. Rek: {{ acc.account_number }}</div>
+          </div>
+          <a href="{% url 'transfer' %}?to={{ acc.account_number }}" class="btn btn-primary btn-sm">Transfer →</a>
+        </div>
+        {% endfor %}
+      {% else %}
+        <div class="empty-state"><span class="icon">🔍</span><p>Tidak ada hasil untuk "{{ query }}"</p></div>
+      {% endif %}
+    {% endif %}
+  </div>
+  <div class="security-box">
+    <span class="icon">🛡️</span>
+    <div>
+      <strong>SQL Injection Prevention (TC-SQLi-02)</strong><br>
+      Input pencarian divalidasi dan diproses via Django ORM (.filter() dengan Q objects) — parameterized query otomatis. UNION-based injection tidak bisa dieksekusi.
+    </div>
+  </div>
+</div>
+{% endblock %}

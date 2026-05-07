@@ -1,0 +1,63 @@
+{% extends 'base_app.html' %}
+{% block title %}Mutasi Rekening{% endblock %}
+{% block page_title %}Mutasi Rekening{% endblock %}
+{% block page_subtitle %}Riwayat lengkap transaksi Anda{% endblock %}
+{% block content %}
+{# Halaman Mutasi: tampilkan SEMUA riwayat transaksi masuk & keluar (ORM query aman) #}
+<div class="balance-card" style="margin-bottom:20px;">
+  <div class="balance-top">
+    <div><div class="balance-label">Saldo Saat Ini</div></div>
+    <div class="balance-chip"><span class="dot"></span>Rekening Aktif</div>
+  </div>
+  <div class="balance-amount"><span>Rp</span>{{ account.balance|floatformat:0 }}</div>
+  <div class="balance-bottom">
+    <div class="balance-acc-num">{{ account.account_number|slice:":4" }} {{ account.account_number|slice:"4:8" }} {{ account.account_number|slice:"8:" }}</div>
+    <div class="balance-name">{{ user.get_full_name }}</div>
+  </div>
+</div>
+<div class="card">
+  <div class="card-header">
+    <div class="card-title">Semua Transaksi</div>
+    <span style="font-size:12px;color:var(--text-muted);">{{ transactions|length }} transaksi</span>
+  </div>
+  {# Tabel lengkap transaksi — semua data auto-escaped django template #}
+  {% if transactions %}
+  <div class="table-wrap">
+    <table>
+      <thead>
+        <tr><th>Tanggal</th><th>Tipe</th><th>Dari / Ke</th><th>Keterangan</th><th>Jumlah</th><th>Status</th></tr>
+      </thead>
+      <tbody>
+        {% for t in transactions %}
+        <tr>
+          <td style="font-size:12px;color:var(--text-muted);white-space:nowrap;">{{ t.created_at|date:"d/m/Y H:i" }}</td>
+          <td><span class="badge badge-info">{{ t.get_transaction_type_display }}</span></td>
+          <td style="font-size:12px;">
+            {% if t.from_account == account %}
+              <span style="color:var(--text-muted);">→ {{ t.to_account.account_number|default:"—" }}</span>
+            {% else %}
+              <span style="color:var(--text-muted);">← {{ t.from_account.account_number|default:"Top Up" }}</span>
+            {% endif %}
+          </td>
+          <td style="max-width:160px;font-size:13px;color:var(--text-secondary);">{{ t.description|default:"—"|truncatechars:30 }}</td>
+          <td style="white-space:nowrap;">
+            {% if t.from_account == account %}
+              <span class="tx-debit tx-arrow-out">Rp {{ t.amount|floatformat:0 }}</span>
+            {% else %}
+              <span class="tx-credit tx-arrow-in">Rp {{ t.amount|floatformat:0 }}</span>
+            {% endif %}
+          </td>
+          <td>
+            {% if t.status == "completed" %}<span class="badge badge-success">Selesai</span>
+            {% else %}<span class="badge badge-warning">{{ t.status }}</span>{% endif %}
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% else %}
+  <div class="empty-state"><span class="icon">📭</span><p>Belum ada transaksi.</p></div>
+  {% endif %}
+</div>
+{% endblock %}

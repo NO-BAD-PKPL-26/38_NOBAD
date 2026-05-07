@@ -1,0 +1,84 @@
+{% extends 'base_app.html' %}
+{% block title %}Dashboard Nasabah{% endblock %}
+{% block page_title %}Dashboard{% endblock %}
+{% block page_subtitle %}Selamat datang, {{ user.get_full_name|default:user.username }}{% endblock %}
+{% block content %}
+{# Dashboard Nasabah: tampilkan saldo, nomor rekening, & 5 transaksi terakhir #}
+
+{# Card saldo — auto-escaped {{ }} untuk mencegah XSS (TC-SQLi-03 output escaping) #}
+<div class="balance-card">
+  <div class="balance-top">
+    <div>
+      <div class="balance-label">Saldo Tersedia</div>
+    </div>
+    <div class="balance-chip">
+      <span class="dot"></span>
+      {% if account.is_active %}Aktif{% else %}Nonaktif{% endif %}
+    </div>
+  </div>
+  <div class="balance-amount"><span>Rp</span>{{ account.balance|floatformat:0 }}</div>
+  <div class="balance-bottom">
+    <div class="balance-acc-num">{{ account.account_number|slice:":4" }} {{ account.account_number|slice:"4:8" }} {{ account.account_number|slice:"8:" }}</div>
+    <div class="balance-name">{{ user.get_full_name }}</div>
+  </div>
+</div>
+
+<div class="quick-actions">
+  {# Quick action buttons: transfer, mutasi, cari rekening #}
+  {# Semua link aman karena menggunakan {% url %} django tag #}
+  <a href="{% url 'transfer' %}" class="action-card blue">
+    <div class="ac-icon">💸</div>
+    <div class="ac-label">Transfer</div>
+    <div class="ac-sub">Kirim uang</div>
+  </a>
+  <a href="{% url 'mutasi' %}" class="action-card green">
+    <div class="ac-icon">📋</div>
+    <div class="ac-label">Mutasi</div>
+    <div class="ac-sub">Riwayat transaksi</div>
+  </a>
+  <a href="{% url 'search_account' %}" class="action-card yellow">
+    <div class="ac-icon">🔍</div>
+    <div class="ac-label">Cari Rekening</div>
+    <div class="ac-sub">Cek nomor rekening</div>
+  </a>
+</div>
+
+<div class="card">
+  <div class="card-header">
+    <div class="card-title">Transaksi Terakhir</div>
+    <a href="{% url 'mutasi' %}" class="btn btn-ghost btn-sm">Lihat Semua →</a>
+  </div>
+  {# Tabel transaksi 5 terakhir — {{ t.amount|floatformat }} aman dari XSS (number type) #}
+  {% if transactions %}
+  <div class="table-wrap">
+    <table>
+      <thead>
+        <tr><th>Tanggal</th><th>Tipe</th><th>Keterangan</th><th>Jumlah</th><th>Status</th></tr>
+      </thead>
+      <tbody>
+        {% for t in transactions %}
+        <tr>
+          <td style="font-size:12px;color:var(--text-muted);">{{ t.created_at|date:"d/m/Y H:i" }}</td>
+          <td><span class="badge badge-info">{{ t.get_transaction_type_display }}</span></td>
+          <td style="max-width:180px;color:var(--text-secondary);">{{ t.description|default:"—"|truncatechars:35 }}</td>
+          <td>
+            {% if t.from_account == account %}
+              <span class="tx-debit tx-arrow-out">Rp {{ t.amount|floatformat:0 }}</span>
+            {% else %}
+              <span class="tx-credit tx-arrow-in">Rp {{ t.amount|floatformat:0 }}</span>
+            {% endif %}
+          </td>
+          <td>
+            {% if t.status == "completed" %}<span class="badge badge-success">Selesai</span>
+            {% else %}<span class="badge badge-warning">{{ t.status }}</span>{% endif %}
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% else %}
+  <div class="empty-state"><span class="icon">📭</span><p>Belum ada transaksi.</p></div>
+  {% endif %}
+</div>
+{% endblock %}

@@ -125,3 +125,22 @@ class RegisterForm(UserCreationForm):
         if not re.match(r"^[a-zA-Z\s\-'\.]+$", name):
             raise ValidationError("Nama hanya boleh berisi huruf dan spasi.")
         return validate_no_injection(name)
+
+
+
+
+class AccountSearchForm(forms.Form):
+    # FORM PENCARIAN REKENING — SQL Injection Prevention (TC-SQLi-02)
+    # Setiap field input divalidasi sebelum masuk ke ORM query di search_account_view()
+    query = forms.CharField(
+        max_length=100,  # Limit panjang input untuk performa & keamanan
+        required=False,  # Optional — user boleh tidak search
+        label='Cari rekening',  # Label di form
+        widget=forms.TextInput(attrs={
+            'class': 'form-input',  # CSS class untuk styling
+            'placeholder': 'Cari nama nasabah atau nomor rekening...',  # Hint text
+        }),
+        # validate_no_injection() blok XSS & SSTI patterns
+        # Blok patterns: <script, javascript:, onclick=, {{}}, {%...%}, dll (CWE-79, CWE-94)
+        validators=[validate_no_injection]  # Custom validator di forms.py (line 6-25)
+    )
