@@ -1,0 +1,93 @@
+{% extends 'base_app.html' %}
+{% block title %}Dashboard Supervisor{% endblock %}
+{% block page_title %}Dashboard Supervisor{% endblock %}
+{% block page_subtitle %}Monitoring sistem & keamanan{% endblock %}
+{% block content %}
+<div class="stats-grid">
+  <div class="stat-card">
+    <div class="stat-icon blue">👥</div>
+    <div class="stat-info">
+      <div class="label">Total Rekening</div>
+      <div class="value">{{ accounts|length }}</div>
+    </div>
+  </div>
+  <div class="stat-card">
+    <div class="stat-icon green">💰</div>
+    <div class="stat-info">
+      <div class="label">Total Dana</div>
+      <div class="value" style="font-size:16px;">Rp {{ total_balance|floatformat:0 }}</div>
+    </div>
+  </div>
+  <div class="stat-card">
+    <div class="stat-icon yellow">📊</div>
+    <div class="stat-info">
+      <div class="label">Total Transaksi</div>
+      <div class="value">{{ total_tx }}</div>
+    </div>
+  </div>
+  <div class="stat-card">
+    <div class="stat-icon red">⚠️</div>
+    <div class="stat-info">
+      <div class="label">Login Gagal</div>
+      <div class="value" style="color:var(--danger);">{{ failed_logins|length }}</div>
+      <div class="sub">terbaru</div>
+    </div>
+  </div>
+</div>
+
+<div class="card">
+  <div class="card-header">
+    <div class="card-title">🚨 Security Monitor — Log Login Gagal</div>
+    <span class="badge badge-danger">CWE-307</span>
+  </div>
+  {% if failed_logins %}
+  <div class="table-wrap">
+    <table>
+      <thead><tr><th>Waktu</th><th>Username</th><th>IP Address</th></tr></thead>
+      <tbody>
+        {% for a in failed_logins %}
+        <tr class="log-row">
+          <td style="font-size:12px;color:var(--text-muted);">{{ a.timestamp|date:"d/m/Y H:i:s" }}</td>
+          <td style="font-weight:500;">{{ a.username }}</td>
+          <td><span class="log-ip">{{ a.ip_address }}</span></td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% else %}
+  <div class="empty-state"><span class="icon">✅</span><p>Tidak ada percobaan login gagal.</p></div>
+  {% endif %}
+</div>
+
+<div class="card">
+  <div class="card-header">
+    <div class="card-title">📊 Semua Transaksi Terbaru</div>
+    <a href="{% url 'manage_accounts' %}" class="btn btn-ghost btn-sm">Kelola Rekening →</a>
+  </div>
+  {% if transactions %}
+  <div class="table-wrap">
+    <table>
+      <thead><tr><th>Tanggal</th><th>Tipe</th><th>Dari</th><th>Ke</th><th>Jumlah</th><th>Status</th></tr></thead>
+      <tbody>
+        {% for t in transactions %}
+        <tr>
+          <td style="font-size:12px;color:var(--text-muted);white-space:nowrap;">{{ t.created_at|date:"d/m/Y H:i" }}</td>
+          <td><span class="badge badge-info">{{ t.get_transaction_type_display }}</span></td>
+          <td style="font-size:12px;font-family:monospace;">{{ t.from_account.account_number|default:"—" }}</td>
+          <td style="font-size:12px;font-family:monospace;">{{ t.to_account.account_number|default:"—" }}</td>
+          <td style="font-weight:600;">Rp {{ t.amount|floatformat:0 }}</td>
+          <td>
+            {% if t.status == "completed" %}<span class="badge badge-success">Selesai</span>
+            {% else %}<span class="badge badge-warning">{{ t.status }}</span>{% endif %}
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% else %}
+  <div class="empty-state"><span class="icon">📭</span><p>Belum ada transaksi.</p></div>
+  {% endif %}
+</div>
+{% endblock %}

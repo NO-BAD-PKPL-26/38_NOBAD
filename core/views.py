@@ -185,6 +185,49 @@ def search_account_view(request):
 
 # ── Supervisor ────────────────────────────────────────────────────────────────
 
+@login_required
+@role_required('supervisor')
+def supervisor_dashboard(request):
+    all_transactions = Transaction.objects.all().order_by('-created_at')[:50]
+    all_accounts = Account.objects.select_related('user').all()
+    total_balance = sum(a.balance for a in all_accounts)
+    failed_logins = LoginAttempt.objects.filter(success=False).order_by('-timestamp')[:20]
+    total_tx = Transaction.objects.count()
+    return render(request, 'supervisor/dashboard.html', {
+        'transactions': all_transactions,
+        'accounts': all_accounts,
+        'total_balance': total_balance,
+        'failed_logins': failed_logins,
+        'total_tx': total_tx,
+    })
+
+
+@login_required
+@role_required('supervisor')
+def manage_accounts_view(request):
+    form = AccountSearchForm(request.GET or None)
+    accounts = Account.objects.select_related('user').all()
+    if form.is_valid():
+        q = form.cleaned_data.get('query', '')
+        if q:
+            accounts = accounts.filter(
+                Q(account_number__icontains=q) |
+                Q(user__username__icontains=q) |
+                Q(user__first_name__icontains=q)
+            )
+    return render(request, 'supervisor/accounts.html', {'accounts': accounts, 'form': form})
+
+
+@login_required
+@role_required('supervisor')
+def toggle_account_view(request, account_id):
+    if request.method == 'POST':
+        account = get_object_or_404(Account, id=account_id)
+        account.is_active = not account.is_active
+        account.save()
+        status = 'diaktifkan' if account.is_active else 'dinonaktifkan'
+        messages.success(request, f'Rekening {account.account_number} berhasil {status}.')
+    return redirect('manage_accounts')
 
 
 
