@@ -171,7 +171,39 @@ def search_account_view(request):
     })
 
 # ── Teller ────────────────────────────────────────────────────────────────────
+@login_required
+@role_required('teller')
+def teller_dashboard(request):
+    recent = Transaction.objects.filter(transaction_type='topup').order_by('-created_at')[:20]
+    return render(request, 'teller/dashboard.html', {'recent_topups': recent})
 
+
+@login_required
+@role_required('teller')
+def topup_view(request):
+    form = TopUpForm()
+    if request.method == 'POST':
+        form = TopUpForm(request.POST)
+        if form.is_valid():
+            acc_num = form.cleaned_data['account_number']
+            amount = form.cleaned_data['amount']
+            try:
+                account = Account.objects.get(account_number=acc_num, is_active=True)
+            except Account.DoesNotExist:
+                messages.error(request, 'Rekening tidak ditemukan atau tidak aktif.')
+                return render(request, 'teller/topup.html', {'form': form})
+            with db_transaction.atomic():
+                account.balance += amount
+                account.save()
+                Transaction.objects.create(
+                    to_account=account, transaction_type='topup', amount=amount,
+                    description=f'Top up oleh teller: {request.user.get_full_name()}',
+                    status='completed', processed_at=timezone.now(),
+                    processed_by=request.user,
+                )
+            messages.success(request, f'Top up Rp {amount:,.0f} ke {acc_num} berhasil!')
+            return redirect('teller_dashboard')
+    return render(request, 'teller/topup.html', {'form': form})
 
 
 

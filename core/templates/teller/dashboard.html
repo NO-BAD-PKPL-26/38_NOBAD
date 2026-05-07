@@ -1,0 +1,48 @@
+{% extends 'base_app.html' %}
+{% block title %}Dashboard Teller{% endblock %}
+{% block page_title %}Dashboard Teller{% endblock %}
+{% block page_subtitle %}Kelola top-up rekening nasabah{% endblock %}
+{% block content %}
+<div class="stats-grid">
+  <div class="stat-card">
+    <div class="stat-icon yellow">💰</div>
+    <div class="stat-info">
+      <div class="label">Top Up Hari Ini</div>
+      <div class="value">{{ recent_topups|length }}</div>
+      <div class="sub">transaksi</div>
+    </div>
+  </div>
+</div>
+<div class="quick-actions">
+  <a href="{% url 'topup' %}" class="action-card yellow">
+    <div class="ac-icon">💰</div>
+    <div class="ac-label">Top Up Nasabah</div>
+    <div class="ac-sub">Isi saldo rekening</div>
+  </a>
+</div>
+<div class="card">
+  <div class="card-header">
+    <div class="card-title">Riwayat Top Up</div>
+  </div>
+  {% if recent_topups %}
+  <div class="table-wrap">
+    <table>
+      <thead><tr><th>Tanggal</th><th>No. Rekening</th><th>Nama Nasabah</th><th>Jumlah</th><th>Status</th></tr></thead>
+      <tbody>
+        {% for t in recent_topups %}
+        <tr>
+          <td style="font-size:12px;color:var(--text-muted);">{{ t.created_at|date:"d/m/Y H:i" }}</td>
+          <td style="font-family:monospace;font-size:13px;">{{ t.to_account.account_number|default:"—" }}</td>
+          <td>{{ t.to_account.user.get_full_name|default:"—" }}</td>
+          <td><span class="tx-credit">Rp {{ t.amount|floatformat:0 }}</span></td>
+          <td><span class="badge badge-success">Selesai</span></td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% else %}
+  <div class="empty-state"><span class="icon">📭</span><p>Belum ada top up.</p></div>
+  {% endif %}
+</div>
+{% endblock %}

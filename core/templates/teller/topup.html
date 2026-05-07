@@ -1,0 +1,30 @@
+{% extends 'base_app.html' %}
+{% block title %}Top Up Nasabah{% endblock %}
+{% block page_title %}Top Up Rekening{% endblock %}
+{% block page_subtitle %}Isi saldo rekening nasabah{% endblock %}
+{% block content %}
+<div style="max-width:500px;">
+  <div class="card">
+    <div class="card-title" style="margin-bottom:20px;">Form Top Up</div>
+    <form method="post">
+      {% csrf_token %}
+      {% for field in form %}
+      <div class="form-group">
+        <label class="form-label">{{ field.label }}</label>
+        {{ field }}
+        {% if field.errors %}<ul class="errorlist">{% for e in field.errors %}<li>{{ e }}</li>{% endfor %}</ul>{% endif %}
+      </div>
+      {% endfor %}
+      <div style="display:flex;gap:12px;margin-top:8px;">
+        <button type="submit" class="btn btn-success">💰 Proses Top Up</button>
+        <a href="{% url 'teller_dashboard' %}" class="btn btn-outline">Batal</a>
+      </div>
+    </form>
+  </div>
+  <div class="security-box">
+    <span class="icon">🛡️</span>
+    <div>Form ini dilindungi <strong>CSRF token</strong>. Nomor rekening divalidasi dengan allowlist (hanya digit 10-16 karakter). Query database menggunakan ORM — SQL injection tidak bisa dieksekusi.
+    </div>
+  </div>
+</div>
+{% endblock %}

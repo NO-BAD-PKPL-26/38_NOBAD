@@ -126,9 +126,6 @@ class RegisterForm(UserCreationForm):
             raise ValidationError("Nama hanya boleh berisi huruf dan spasi.")
         return validate_no_injection(name)
 
-
-
-
 class AccountSearchForm(forms.Form):
     # FORM PENCARIAN REKENING — SQL Injection Prevention (TC-SQLi-02)
     # Setiap field input divalidasi sebelum masuk ke ORM query di search_account_view()
@@ -143,4 +140,26 @@ class AccountSearchForm(forms.Form):
         # validate_no_injection() blok XSS & SSTI patterns
         # Blok patterns: <script, javascript:, onclick=, {{}}, {%...%}, dll (CWE-79, CWE-94)
         validators=[validate_no_injection]  # Custom validator di forms.py (line 6-25)
+    )
+
+class TopUpForm(forms.Form):
+    account_number = forms.CharField(
+        max_length=16,
+        label='Nomor Rekening Nasabah',
+        widget=forms.TextInput(attrs={
+            'class': 'form-input',
+            'placeholder': 'Nomor rekening nasabah',
+        }),
+        validators=[validate_account_number]
+    )
+    amount = forms.DecimalField(
+        max_digits=15,
+        decimal_places=2,
+        label='Jumlah Top Up (Rp)',
+        widget=forms.NumberInput(attrs={
+            'class': 'form-input',
+            'min': '1',
+            'placeholder': '0',
+        }),
+        validators=[validate_amount]
     )

@@ -9,17 +9,10 @@ urlpatterns = [
     path('dashboard/', views.dashboard_view, name='dashboard'),
     # Nasabah
     path('nasabah/', views.nasabah_dashboard, name='nasabah_dashboard'),  # dashboard dengan saldo & 5 tx terakhir
-
     path('nasabah/mutasi/', views.mutasi_view, name='mutasi'),  # riwayat semua transaksi
     path('nasabah/cari-rekening/', views.search_account_view, name='search_account'),  # cari rekening orang lain
     # Teller
-    
-
-
-
-    # Supervisor
-    
-
-
-    
+    path('teller/', views.teller_dashboard, name='teller_dashboard'),
+    path('teller/topup/', views.topup_view, name='topup'),
+    # Supervisor   
 ]
