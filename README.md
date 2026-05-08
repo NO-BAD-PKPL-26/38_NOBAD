@@ -675,8 +675,12 @@ def validate_account_number(value):
 ### Langkah Instalasi
 
 ```bash
-# 1. Clone repository
-[git https://gitlab.cs.ui.ac.id/pkpl26/38-no-bad/pkpl26_38_nobad.git](https://github.com/NO-BAD-PKPL-26/38_NOBAD.git)
+# 1a. Clone repository
+git clone https://gitlab.cs.ui.ac.id/pkpl26/38-no-bad/pkpl26_38_nobad.git
+cd pkpl26_38_nobad
+
+# 1b. Alternative clone repository
+git clone https://github.com/NO-BAD-PKPL-26/38_NOBAD.git
 cd 38_NOBAD
 
 # 2. Buat virtual environment
