@@ -1,18 +1,17 @@
-# uncomment import yang dirasa perlu ya guys (notes dari bion)
 from django.shortcuts import render, redirect
-# from django.shortcuts import get_object_or_404
+from django.shortcuts import get_object_or_404
 from django.contrib.auth import authenticate, login, logout
 from django.contrib.auth.decorators import login_required
 from django.contrib import messages
-# from django.utils import timezone
-# from django.db import transaction as db_transaction
+from django.utils import timezone
+from django.db import transaction as db_transaction
 from django.core.exceptions import PermissionDenied
 from django.db.models import Q
-# from .models import User
+from .models import User
 from .models import Transaction 
 from .models import LoginAttempt , Account 
 from .forms import LoginForm, RegisterForm
-# from .forms import TransferForm, TopUpForm
+from .forms import TransferForm, TopUpForm
 from .forms import AccountSearchForm
 from .middleware import get_client_ip
 import random
@@ -123,7 +122,43 @@ def nasabah_dashboard(request):
     })
 
 
-# untuk transfer view
+@login_required
+@role_required('nasabah')
+def transfer_view(request):
+    account = get_or_create_account(request.user)
+    form = TransferForm()
+    if request.method == 'POST':
+        form = TransferForm(request.POST)
+        if form.is_valid():
+            to_acc_num = form.cleaned_data['to_account_number']
+            amount = form.cleaned_data['amount']
+            description = form.cleaned_data.get('description', '')
+            try:
+                # TC-SQLi-04c: ORM only, no raw SQL
+                to_account = Account.objects.get(account_number=to_acc_num, is_active=True)
+            except Account.DoesNotExist:
+                messages.error(request, 'Nomor rekening tujuan tidak ditemukan atau tidak aktif.')
+                return render(request, 'nasabah/transfer.html', {'form': form, 'account': account})
+            if to_account == account:
+                messages.error(request, 'Tidak dapat transfer ke rekening sendiri.')
+                return render(request, 'nasabah/transfer.html', {'form': form, 'account': account})
+            if account.balance < amount:
+                messages.error(request, 'Saldo tidak mencukupi.')
+                return render(request, 'nasabah/transfer.html', {'form': form, 'account': account})
+            with db_transaction.atomic():
+                account.balance -= amount
+                to_account.balance += amount
+                account.save()
+                to_account.save()
+                Transaction.objects.create(
+                    from_account=account, to_account=to_account,
+                    transaction_type='transfer', amount=amount,
+                    description=description, status='completed',
+                    processed_at=timezone.now(),
+                )
+            messages.success(request, f'Transfer Rp {amount:,.0f} ke {to_acc_num} berhasil!')
+            return redirect('nasabah_dashboard')
+    return render(request, 'nasabah/transfer.html', {'form': form, 'account': account})
 
 
 @login_required

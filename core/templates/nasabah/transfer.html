@@ -1,0 +1,43 @@
+{% extends 'base_app.html' %}
+{% block title %}Transfer Dana{% endblock %}
+{% block page_title %}Transfer Dana{% endblock %}
+{% block page_subtitle %}Kirim uang ke rekening lain{% endblock %}
+{% block content %}
+<div style="max-width:600px;">
+  <div class="balance-card" style="margin-bottom:20px;">
+    <div class="balance-top">
+      <div><div class="balance-label">Saldo Tersedia</div></div>
+      <div class="balance-chip"><span class="dot"></span>{% if account.is_active %}Rekening Aktif{% else %}Nonaktif{% endif %}</div>
+    </div>
+    <div class="balance-amount"><span>Rp</span>{{ account.balance|floatformat:0 }}</div>
+    <div class="balance-bottom">
+      <div class="balance-acc-num">{{ account.account_number|slice:":4" }} {{ account.account_number|slice:"4:8" }} {{ account.account_number|slice:"8:" }}</div>
+      <div class="balance-name">{{ user.get_full_name }}</div>
+    </div>
+  </div>
+  <div class="card">
+    <div class="card-title" style="margin-bottom:20px;">Form Transfer</div>
+    <form method="post">
+      {% csrf_token %}
+      {% for field in form %}
+      <div class="form-group">
+        <label class="form-label">{{ field.label }}</label>
+        {{ field }}
+        {% if field.errors %}<ul class="errorlist">{% for e in field.errors %}<li>{{ e }}</li>{% endfor %}</ul>{% endif %}
+      </div>
+      {% endfor %}
+      <div style="display:flex;gap:12px;margin-top:8px;">
+        <button type="submit" class="btn btn-primary">💸 Kirim Transfer</button>
+        <a href="{% url 'nasabah_dashboard' %}" class="btn btn-outline">Batal</a>
+      </div>
+    </form>
+  </div>
+  <div class="security-box">
+    <span class="icon">🛡️</span>
+    <div>
+      <strong>Dilindungi CSRF Token</strong><br>
+      Setiap form transfer memiliki token unik yang diverifikasi server. Input nomor rekening dan keterangan divalidasi ketat untuk mencegah SQL Injection dan XSS.
+    </div>
+  </div>
+</div>
+{% endblock %}

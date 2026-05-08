@@ -163,3 +163,36 @@ class TopUpForm(forms.Form):
         }),
         validators=[validate_amount]
     )
+
+class TransferForm(forms.Form):
+    to_account_number = forms.CharField(
+        max_length=16,
+        label='Nomor Rekening Tujuan',
+        widget=forms.TextInput(attrs={
+            'class': 'form-input',
+            'placeholder': 'Contoh: 3752048829',
+            'maxlength': '16',
+        }),
+        validators=[validate_account_number]
+    )
+    amount = forms.DecimalField(
+        max_digits=15,
+        decimal_places=2,
+        label='Jumlah Transfer (Rp)',
+        widget=forms.NumberInput(attrs={
+            'class': 'form-input',
+            'min': '1',
+            'placeholder': '0',
+        }),
+        validators=[validate_amount]
+    )
+    description = forms.CharField(
+        max_length=200,
+        required=False,
+        label='Berita / Keterangan',
+        widget=forms.TextInput(attrs={
+            'class': 'form-input',
+            'placeholder': 'Keterangan transfer (opsional)',
+        }),
+        validators=[validate_no_injection]
+    )

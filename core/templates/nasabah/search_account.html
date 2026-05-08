@@ -29,9 +29,7 @@
             <div style="font-weight:600;font-size:14px;">{{ acc.user.get_full_name|default:acc.user.username }}</div>
             <div style="font-size:12px;color:var(--text-muted);margin-top:3px;">No. Rek: {{ acc.account_number }}</div>
           </div>
-          {% comment %} ini nanti di uncomment kalau fitur transfer sudah selesai, biar ga muncul link mati di dashboard nasabah
           <a href="{% url 'transfer' %}?to={{ acc.account_number }}" class="btn btn-primary btn-sm">Transfer →</a>
-          {% endcomment %}
         </div>
         {% endfor %}
       {% else %}
