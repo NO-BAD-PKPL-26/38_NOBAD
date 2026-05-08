@@ -467,6 +467,74 @@ def validate_account_number(value):
 
 ---
 
+## 3. Screenshot Aplikasi
+
+### Halaman Login
+
+![Login Page](screenshots/app-login.png)
+
+---
+
+### Halaman Register
+
+![Register Page](screenshots/app-register.png)
+
+---
+
+### Dashboard Nasabah
+
+![Dashboard Nasabah](screenshots/app-dashboard-nasabah.png)
+
+---
+
+### Halaman Transfer Dana
+
+![Transfer](screenshots/app-transfer.png)
+
+---
+
+### Halaman Mutasi Rekening
+
+![Mutasi](screenshots/app-mutasi.png)
+
+---
+
+### Halaman Cari Rekening
+
+![Cari Rekening](screenshots/app-cari-rekening.png)
+
+---
+
+### Dashboard Teller
+
+![Dashboard Teller](screenshots/app-dashboard-teller.png)
+
+---
+
+### Halaman Top-Up
+
+![Top-Up](screenshots/app-topup.png)
+
+---
+
+### Dashboard Supervisor
+
+![Dashboard Supervisor](screenshots/app-dashboard-supervisor.png)
+
+---
+
+### Halaman Kelola Rekening (Supervisor)
+
+![Kelola Rekening](screenshots/app-kelola-rekening.png)
+
+---
+
+### Fitur Keamanan — Halaman Lockout (TC-BA-02)
+
+![Lockout Page](screenshots/app-lockout.png)
+
+---
+
 ## 4. Hasil Test-Case
 
 ### TC-SQLi-01 — Login Bypass via SQL Injection
