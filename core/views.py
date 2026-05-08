@@ -126,6 +126,9 @@ def nasabah_dashboard(request):
 @role_required('nasabah')
 def transfer_view(request):
     account = get_or_create_account(request.user)
+    if not account.is_active:
+        messages.error(request, 'Rekening Anda dinonaktifkan. Tidak dapat melakukan transfer.')
+        return redirect('nasabah_dashboard')
     form = TransferForm()
     if request.method == 'POST':
         form = TransferForm(request.POST)
