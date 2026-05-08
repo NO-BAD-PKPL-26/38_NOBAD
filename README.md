@@ -473,7 +473,8 @@ def validate_account_number(value):
 
 - **Input:** Username: `' OR '1'='1' --` | Password: bebas
 - **Expected:** Login GAGAL, pesan "Username atau password salah."
-- **Screenshot:** [TC-SQLi-01_NOBAD.png](screenshots/TC-SQLi-01_NOBAD.png)
+
+![TC-SQLi-01_NOBAD.png](screenshots/TC-SQLi-01_NOBAD.png)
 
 ---
 
@@ -481,7 +482,8 @@ def validate_account_number(value):
 
 - **Input di Cari Rekening:** `' UNION SELECT username, password, null FROM core_user --`
 - **Expected:** Error validasi "Input mengandung karakter berbahaya". Tidak ada data password bocor
-- **Screenshot:** [TC-SQLi-02_NOBAD.png](screenshots/TC-SQLi-02_NOBAD.png)
+
+![TC-SQLi-02_NOBAD.png](screenshots/TC-SQLi-02_NOBAD.png)
 
 ---
 
@@ -489,7 +491,8 @@ def validate_account_number(value):
 
 - **Metode:** Code review
 - **Expected:** Tidak ditemukan raw SQL — semua pakai ORM
-- **Screenshot:** [TC-SQLi-03_NOBAD.png](screenshots/TC-SQLi-03_NOBAD.png)
+
+![TC-SQLi-03_NOBAD.png](screenshots/TC-SQLi-03_NOBAD.png)
 
 ---
 
@@ -497,7 +500,8 @@ def validate_account_number(value):
 
 - **Input di field Nomor Rekening Transfer:** `1234567890' OR '1'='1' --`
 - **Expected:** Error "Nomor rekening tidak valid. Harus berupa angka (10-16 digit)"
-- **Screenshot:** [TC-SQLi-04c_NOBAD.png](screenshots/TC-SQLi-04c_NOBAD.png)
+
+![TC-SQLi-04c_NOBAD.png](screenshots/TC-SQLi-04c_NOBAD.png)
 
 ---
 
@@ -505,7 +509,8 @@ def validate_account_number(value):
 
 - **Input di field Keterangan Transfer:** `<script>alert('XSS')</script>`
 - **Expected:** Error "Input mengandung karakter atau pola yang tidak diizinkan". Tidak ada popup alert
-- **Screenshot:** [TC-CI-01_NOBAD.png](screenshots/TC-CI-01_NOBAD.png)
+
+![TC-CI-01_NOBAD.png](screenshots/TC-CI-01_NOBAD.png)
 
 ---
 
@@ -513,7 +518,8 @@ def validate_account_number(value):
 
 - **Input di field Keterangan Transfer:** `<h1>Hacked</h1><img src=x onerror=alert(1)>`
 - **Expected:** Error validasi. Tidak ada HTML yang dirender
-- **Screenshot:** [TC-CI-02_NOBAD.png](screenshots/TC-CI-02_NOBAD.png)
+
+![TC-CI-02_NOBAD.png](screenshots/TC-CI-02_NOBAD.png)
 
 ---
 
@@ -521,7 +527,8 @@ def validate_account_number(value):
 
 - **Input di field Keterangan Transfer:** `{{7*7}}`
 - **Expected:** Error validasi, tidak tampil `49`, SECRET_KEY tidak bocor
-- **Screenshot:** [TC-CI-03_NOBAD.png](screenshots/TC-CI-03_NOBAD.png)
+
+![TC-CI-03_NOBAD.png](screenshots/TC-CI-03_NOBAD.png)
 
 ---
 
@@ -529,7 +536,8 @@ def validate_account_number(value):
 
 - **Input di field Keterangan Transfer:** `<script>alert('transfer intercepted')</script>`
 - **Expected:** Error validasi. Tidak ada popup alert
-- **Screenshot:** [TC-CI-04c_NOBAD.png](screenshots/TC-CI-04c_NOBAD.png)
+
+![TC-CI-04c_NOBAD.png](screenshots/TC-CI-04c_NOBAD.png)
 
 ---
 
@@ -537,7 +545,8 @@ def validate_account_number(value):
 
 - **Metode:** Django shell → `print(u.password)`
 - **Expected:** Output `pbkdf2_sha256$870000$...` / hashed
-- **Screenshot:** [TC-BA-01_NOBAD.png](screenshots/TC-BA-01_NOBAD.png)
+
+![TC-BA-01_NOBAD.png](screenshots/TC-BA-01_NOBAD.png)
 
 ---
 
@@ -545,7 +554,8 @@ def validate_account_number(value):
 
 - **Langkah:** Login 6x berturut-turut dengan password salah
 - **Expected:** Percobaan ke-6 mendapat halaman 403 "Akun Terkunci Sementara"
-- **Screenshot:** [TC-BA-02_NOBAD.png](screenshots/TC-BA-02_NOBAD.png)
+
+![TC-BA-02_NOBAD.png](screenshots/TC-BA-02_NOBAD.png)
 
 ---
 
@@ -553,8 +563,10 @@ def validate_account_number(value):
 
 - **Langkah:** Login → logout → akses `/nasabah/` langsung
 - **Expected:** Redirect ke halaman login — tidak bisa akses dashboard
-- **Screenshot:** [TC-BA-03_NOBAD.png](screenshots/TC-BA-03_NOBAD.png)
-- **Screenshot tambahan:** [TC-BA-03_NOBAD_2.png](screenshots/TC-BA-03_NOBAD_2.png)
+
+![TC-BA-03_NOBAD.png](screenshots/TC-BA-03_NOBAD.png)
+
+![TC-BA-03_NOBAD_2.png](screenshots/TC-BA-03_NOBAD_2.png)
 
 ---
 
@@ -563,7 +575,8 @@ def validate_account_number(value):
 - **URL yang diuji:**
   - `/nasabah/mutasi/` → tanpa login
 - **Expected:** Redirect ke login (tanpa login) atau 403 Forbidden (cross-role)
-- **Screenshot:** [TC-BA-04_NOBAD.png](screenshots/TC-BA-04_NOBAD.png)
+
+![TC-BA-04_NOBAD.png](screenshots/TC-BA-04_NOBAD.png)
 
 ---
 
@@ -572,8 +585,10 @@ def validate_account_number(value):
 - **Skenario 1:** Username valid (`nasabah1`) + password salah → pesan error
 - **Skenario 2:** Username tidak terdaftar (`dionwisdom1`) + password sembarang → pesan error
 - **Expected:** Kedua pesan **SAMA**: `"Username atau password salah."`
-- **Screenshot:** [TC-BA-05_NOBAD_1.png](screenshots/TC-BA-05_NOBAD_1.png)
-- **Screenshot tambahan:** [TC-BA-05_NOBAD_2.png](screenshots/TC-BA-05_NOBAD_2.png)
+
+![TC-BA-05_NOBAD_1.png](screenshots/TC-BA-05_NOBAD_1.png)
+
+![TC-BA-05_NOBAD_2.png](screenshots/TC-BA-05_NOBAD_2.png)
 
 ---
 
@@ -582,11 +597,16 @@ def validate_account_number(value):
 - **Metode:** Inspect Element di semua form POST
 - **Expected:** Ada `<input type="hidden" name="csrfmiddlewaretoken" value="...">`
 - **Form yang dicek:** Login, Register, Transfer, Top-Up, Toggle Rekening, Logout
-- **Screenshot:** [TC-CSRF-01_NOBAD_1.png](screenshots/TC-CSRF-01_NOBAD_1.png)
-- **Screenshot tambahan:** [TC-CSRF-01_NOBAD_2.png](screenshots/TC-CSRF-01_NOBAD_2.png)
-- **Screenshot tambahan:** [TC-CSRF-01_NOBAD_3.png](screenshots/TC-CSRF-01_NOBAD_3.png)
-- **Screenshot tambahan:** [TC-CSRF-01_NOBAD_4.png](screenshots/TC-CSRF-01_NOBAD_4.png)
-- **Screenshot tambahan:** [TC-CSRF-01_NOBAD_5.png](screenshots/TC-CSRF-01_NOBAD_5.png)
+
+![TC-CSRF-01_NOBAD_1.png](screenshots/TC-CSRF-01_NOBAD_1.png)
+
+![TC-CSRF-01_NOBAD_2.png](screenshots/TC-CSRF-01_NOBAD_2.png)
+
+![TC-CSRF-01_NOBAD_3.png](screenshots/TC-CSRF-01_NOBAD_3.png)
+
+![TC-CSRF-01_NOBAD_4.png](screenshots/TC-CSRF-01_NOBAD_4.png)
+
+![TC-CSRF-01_NOBAD_5.png](screenshots/TC-CSRF-01_NOBAD_5.png)
 
 ---
 
@@ -594,8 +614,10 @@ def validate_account_number(value):
 
 - **Metode:** Firefox DevTools "Edit and Resend" — ubah `csrfmiddlewaretoken=invalid_token_12345`
 - **Expected:** Server merespons HTTP 403 Forbidden
-- **Screenshot:** [TC-CSRF-02_NOBAD.png](screenshots/TC-CSRF-02_NOBAD.png)
-- **Screenshot tambahan:** [TC-CSRF-02_NOBAD_2.png](screenshots/TC-CSRF-02_NOBAD_2.png)
+
+![TC-CSRF-02_NOBAD.png](screenshots/TC-CSRF-02_NOBAD.png)
+
+![TC-CSRF-02_NOBAD_2.png](screenshots/TC-CSRF-02_NOBAD_2.png)
 
 ---
 
@@ -614,7 +636,8 @@ def validate_account_number(value):
   </script>
   ```
 - **Expected:** HTTP 403 CSRF verification failed — transfer tidak terjadi
-- **Screenshot:** [TC-CSRF-03_NOBAD.png](screenshots/TC-CSRF-03_NOBAD.png)
+
+![TC-CSRF-03_NOBAD.png](screenshots/TC-CSRF-03_NOBAD.png)
 
 ---
 
@@ -642,7 +665,8 @@ def validate_account_number(value):
     </script>
   ```
 - **Expected:** HTTP 403 — saldo tidak berkurang
-- **Screenshot:** [TC-CSRF-04c_NOBAD.png](screenshots/TC-CSRF-04c_NOBAD.png)
+
+![TC-CSRF-04c_NOBAD.png](screenshots/TC-CSRF-04c_NOBAD.png)
 
 ---
 
@@ -693,7 +717,7 @@ Buka di browser: **http://127.0.0.1:8000**
 
 ## 6. Video Demo
 
-> _(Tambahkan link YouTube Unlisted di sini setelah video selesai diupload)_
+> _(placeholder)_
 
 **Link:** [YouTube — BankApp Secure Demo](https://youtu.be/...)
 
