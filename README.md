@@ -68,7 +68,7 @@ Fokus utama aplikasi adalah **implementasi secure coding** untuk melindungi dari
 #### Kode Sebelum (Vulnerable)
 
 ```python
-# ❌ VULNERABLE — core/views.py
+#  VULNERABLE — core/views.py
 # Tidak ada validasi sama sekali, input langsung disimpan ke database
 def transfer_view(request):
     if request.method == 'POST':
@@ -82,7 +82,7 @@ def transfer_view(request):
 ```
 
 ```html
-<!-- ❌ VULNERABLE — template -->
+<!--  VULNERABLE — template -->
 <!-- Menggunakan |safe filter → XSS bisa dieksekusi -->
 <td>{{ t.description|safe }}</td>
 ```
@@ -90,7 +90,7 @@ def transfer_view(request):
 #### Kode Sesudah (Secure)
 
 ```python
-# ✅ SECURE — core/forms.py
+#  SECURE — core/forms.py
 import re
 from django.core.exceptions import ValidationError
 
@@ -132,7 +132,7 @@ class TransferForm(forms.Form):
 ```
 
 ```html
-<!-- ✅ SECURE — template -->
+<!--  SECURE — template -->
 <!-- Django auto-escape aktif: {{ variable }} di-escape otomatis -->
 <!-- <script> menjadi &lt;script&gt; — tidak dieksekusi browser -->
 <td>{{ t.description|truncatechars:30 }}</td>
@@ -165,7 +165,7 @@ class TransferForm(forms.Form):
 #### Kode Sebelum (Vulnerable)
 
 ```python
-# ❌ VULNERABLE — autentikasi lemah
+#  VULNERABLE — autentikasi lemah
 
 # 1. Password disimpan plaintext (CWE-256)
 user.password = request.POST.get('password')  # "Nasabah@123" tersimpan apa adanya
@@ -192,7 +192,7 @@ def teller_dashboard(request):
 #### Kode Sesudah (Secure)
 
 ```python
-# ✅ SECURE
+#  SECURE
 
 # 1. PBKDF2 hashing otomatis (TC-BA-01) — settings.py
 PASSWORD_HASHERS = [
@@ -275,7 +275,7 @@ def supervisor_dashboard(request): ...
 #### Kode Sebelum (Vulnerable)
 
 ```html
-<!-- ❌ VULNERABLE — form tanpa CSRF token -->
+<!--  VULNERABLE — form tanpa CSRF token -->
 <!-- Penyerang bisa buat form ini di situs lain dan trigger otomatis -->
 <form method="post" action="http://bankapp.com/nasabah/transfer/">
   <input name="to_account_number" value="rekening_penyerang" />
@@ -288,7 +288,7 @@ def supervisor_dashboard(request): ...
 ```
 
 ```python
-# ❌ VULNERABLE — settings.py
+#  VULNERABLE — settings.py
 MIDDLEWARE = [
     # CsrfViewMiddleware tidak ada — tidak ada verifikasi token
 ]
@@ -297,7 +297,7 @@ MIDDLEWARE = [
 #### Kode Sesudah (Secure)
 
 ```python
-# ✅ SECURE — settings.py
+#  SECURE — settings.py
 MIDDLEWARE = [
     ...
     'django.middleware.csrf.CsrfViewMiddleware',  # verifikasi token server-side
@@ -312,7 +312,7 @@ def logout_view(request):
 ```
 
 ```html
-<!-- ✅ SECURE — setiap form POST wajib punya {% csrf_token %} -->
+<!--  SECURE — setiap form POST wajib punya {% csrf_token %} -->
 
 <!-- Form Transfer (TC-CSRF-04c) -->
 <form method="post" action="{% url 'transfer' %}">
@@ -367,7 +367,7 @@ def logout_view(request):
 #### Kode Sebelum (Vulnerable)
 
 ```python
-# ❌ VULNERABLE — raw SQL dengan string concatenation
+# VULNERABLE — raw SQL dengan string concatenation
 
 # Login bypass (TC-SQLi-01)
 def login_view(request):
@@ -399,7 +399,7 @@ def transfer_view(request):
 #### Kode Sesudah (Secure)
 
 ```python
-# ✅ SECURE — Django ORM, parameterized query otomatis
+# SECURE — Django ORM, parameterized query otomatis
 
 # Login — Django authenticate() menggunakan ORM internally (TC-SQLi-01)
 # core/views.py
@@ -440,7 +440,7 @@ account = Account.objects.get(
 ```
 
 ```python
-# ✅ Validasi input sebagai lapisan pertama — core/forms.py
+# Validasi input sebagai lapisan pertama — core/forms.py
 
 def validate_account_number(value):
     """
@@ -676,8 +676,8 @@ def validate_account_number(value):
 
 ```bash
 # 1. Clone repository
-git https://gitlab.cs.ui.ac.id/pkpl26/38-no-bad/pkpl26_38_nobad.git
-cd pkpl26_38_nobad
+[git https://gitlab.cs.ui.ac.id/pkpl26/38-no-bad/pkpl26_38_nobad.git](https://github.com/NO-BAD-PKPL-26/38_NOBAD.git)
+cd 38_NOBAD
 
 # 2. Buat virtual environment
 python -m venv venv
