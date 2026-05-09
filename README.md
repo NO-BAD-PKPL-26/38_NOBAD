@@ -791,7 +791,7 @@ Buka di browser: **http://127.0.0.1:8000**
 
 > _(placeholder)_
 
-**Link:** [YouTube — BankApp Secure Demo](https://youtu.be/...)
+**Link:** [YouTube — BankApp Secure Demo](https://youtu.be/4SJo829-nA4)
 
 
 _Dibuat oleh Kelompok NOBAD — PKPL Genap 2025/2026_
