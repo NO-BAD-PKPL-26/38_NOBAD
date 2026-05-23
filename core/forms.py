@@ -142,6 +142,19 @@ class AccountSearchForm(forms.Form):
         validators=[validate_no_injection]  # Custom validator di forms.py (line 6-25)
     )
 
+    def clean_query(self):
+        query_data = self.cleaned_data.get('query', '')
+        
+        # Daftar kata kunci yang diblokir untuk mencegah SQLi di level form
+        forbidden_keywords = ['UNION', 'SELECT', '--', ';']
+        
+        # Cek apakah ada kata kunci terlarang di dalam input (case-insensitive)
+        for keyword in forbidden_keywords:
+            if keyword in query_data.upper():
+                raise ValidationError("Karakter tidak diizinkan! Terdeteksi potensi SQL Injection.")
+                
+        return query_data
+
 class TopUpForm(forms.Form):
     account_number = forms.CharField(
         max_length=16,

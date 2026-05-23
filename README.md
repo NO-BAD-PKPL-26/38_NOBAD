@@ -838,15 +838,23 @@ Bagian pengujian ini memvalidasi kemampuan aplikasi dalam menangkal serangan _Cr
 
 ### 3. SQL Injection Prevention (Tugas Ojan)
 
+Bagian pengujian ini memvalidasi keamanan formulir (*forms*) dan kueri *database* dari manipulasi perintah SQL, guna mencegah pembocoran data sensitif (*data breach*) dan mekanisme *login bypass*.
+
 | ID Test Case   | Fungsi Uji      | Skenario Pengujian     | Status        |
 | :------------- | :-------------- | :--------------------- | :------------ |
-| **TC-SQLi-01** | `[Placeholder]` | _[Deskripsi skenario]_ | **[PENDING]** |
+| **TC-SQLi-01** | `test_SQLi_01a_login_injection_in_username` | Menginput *payload bypass boolean* (`' OR '1'='1' --`) pada *form login* untuk memastikan form menolaknya. | **PASSED** |
+| **TC-SQLi-02** | `test_SQLi_02a_union_in_search_rejected` | Mengirimkan *payload* `UNION SELECT` pada fitur pencarian rekening untuk memastikan tidak ada data *table* lain yang terekspos. | **PASSED** |
+| **TC-SQLi-03** | `test_SQLi_03a_search_with_injection_payload_does_not_leak_data` | Memastikan *query builder* bawaan Django (ORM) melakukan *parameterized query* dan memperlakukan *payload* SQL sebagai teks biasa. | **PASSED** |
 
 ### 4. CSRF Protection (Tugas Ojan)
 
-| ID Test Case   | Fungsi Uji      | Skenario Pengujian     | Status        |
-| :------------- | :-------------- | :--------------------- | :------------ |
-| **TC-CSRF-01** | `[Placeholder]` | _[Deskripsi skenario]_ | **[PENDING]** |
+Bagian pengujian ini memastikan aplikasi aman dari serangan pembajakan sesi di mana penyerang (*attacker*) memaksa korban (*victim*) untuk mengeksekusi aksi yang tidak diinginkan pada aplikasi yang sedang terautentikasi.
+
+| ID Test Case | Fungsi Uji | Skenario Pengujian | Status |
+| :--- | :--- | :--- | :--- |
+| **TC-CSRF-01**| `test_CSRF_01a_csrf_middleware_in_settings` | Memverifikasi komponen perlindungan `CsrfViewMiddleware` telah terdaftar dan aktif secara global di dalam *settings* aplikasi. | **PASSED** |
+| **TC-CSRF-02**| `test_CSRF_02a_transfer_without_token_returns_403`| Mensimulasikan POST *request* pemindahan dana (*transfer*) uang tanpa memberikan *token* CSRF. Memastikan permintaan tersebut diblokir (HTTP 403). | **PASSED** |
+| **TC-CSRF-03**| `test_CSRF_03a_no_transaction_created_on_csrf_attack` | Memastikan *database* terjaga integritasnya (*atomicity*) dengan mengecek bahwa tidak ada saldo terpotong dan tidak ada catatan transaksi baru saat serangan CSRF terjadi. | **PASSED** |
 
 ---
 

@@ -116,3 +116,100 @@ class BankingSecurityTests(TestCase):
         
         # Pastikan tidak ada tag script mentah yang lolos
         self.assertNotContains(response, xss_payload)
+
+class CSRFMiddlewareTests(TestCase):
+
+    # 3. CSRF PROTECTION
+
+    """TC-CSRF-01 & 02: Memastikan Middleware CSRF aktif dan token diverifikasi"""
+    def setUp(self):
+        self.nasabah = User.objects.create_user(username='nasabah_csrf', password='TestPass@123', role='nasabah')
+        Account.objects.create(user=self.nasabah, account_number='88889999', balance=100000)
+
+    def test_CSRF_01a_csrf_middleware_in_settings(self):
+        """CsrfViewMiddleware harus terdaftar di MIDDLEWARE settings"""
+        from django.conf import settings
+        self.assertIn('django.middleware.csrf.CsrfViewMiddleware', settings.MIDDLEWARE)
+
+    def test_CSRF_02a_transfer_without_token_returns_403(self):
+        """POST transfer uang tanpa CSRF token harus ditolak dengan status 403"""
+        # Gunakan client khusus dengan enforce_csrf_checks=True
+        csrf_client = Client(enforce_csrf_checks=True)
+        csrf_client.login(username='nasabah_csrf', password='TestPass@123')
+        
+        response = csrf_client.post(reverse('transfer'), {
+            'to_account_number': '11112222',
+            'amount': '10000',
+            'description': 'CSRF Attack',
+        })
+        # Harus Forbidden karena tidak ada csrfmiddlewaretoken di payload POST
+        self.assertEqual(response.status_code, 403)
+
+class CSRFTransferTests(TestCase):
+    """TC-CSRF-03: Simulasi serangan CSRF pada endpoint kritikal"""
+    def setUp(self):
+        self.client = Client(enforce_csrf_checks=True)
+        self.nasabah = User.objects.create_user(username='nasabah_csrf_tx', password='TestPass@123', role='nasabah')
+        Account.objects.create(user=self.nasabah, account_number='77776666', balance=500000)
+        self.client.login(username='nasabah_csrf_tx', password='TestPass@123')
+
+    def test_CSRF_03a_no_transaction_created_on_csrf_attack(self):
+        """Pastikan saldo tidak terpotong dan transaksi tidak dibuat saat CSRF Attack"""
+        initial_balance = self.nasabah.account.balance
+        
+        # Kirim request jahat tanpa token
+        self.client.post(reverse('transfer'), {
+            'to_account_number': '11112222',
+            'amount': '500000',
+        })
+        
+        # Cek Database: Tidak boleh ada transaksi yang masuk
+        self.assertEqual(Transaction.objects.count(), 0)
+        
+        # Cek Saldo: Tidak boleh berkurang
+        self.nasabah.account.refresh_from_db()
+        self.assertEqual(self.nasabah.account.balance, initial_balance)
+
+class SQLiFormTests(TestCase):
+
+    # 4. SQL INJECTION PREVENTION
+
+    """TC-SQLi-01 & 02: Memastikan form menolak payload SQLi dasar"""
+    def test_SQLi_01a_login_injection_in_username(self):
+        """LoginForm harus menolak username yang berisi bypass boolean SQL"""
+        from core.forms import LoginForm
+        form = LoginForm(data={
+            'username': "' OR '1'='1' --",
+            'password': 'anything',
+        })
+        # Sistem akan menganggap form tidak valid
+        self.assertFalse(form.is_valid())
+
+    def test_SQLi_02a_union_in_search_rejected(self):
+        """Fitur pencarian harus kebal dari serangan UNION SELECT"""
+        from core.forms import AccountSearchForm
+        form = AccountSearchForm(data={
+            'query': "' UNION SELECT username, password FROM core_user --",
+        })
+        self.assertFalse(form.is_valid())
+
+class SQLiViewTests(TestCase):
+    """TC-SQLi-03: Memastikan ORM memparameterisasi input jahat"""
+    def setUp(self):
+        self.client = Client()
+        self.nasabah = User.objects.create_user(username='nasabah_sqli', password='TestPass@123', role='nasabah')
+        self.client.login(username='nasabah_sqli', password='TestPass@123')
+
+    def test_SQLi_03a_search_with_injection_payload_does_not_leak_data(self):
+        """Search menggunakan ORM tidak mengeksekusi payload SQL"""
+        # Kirim payload SQLi ke endpoint pencarian
+        response = self.client.get(reverse('search_account'), {
+            'query': "' UNION SELECT username, password FROM core_user --",
+        })
+        
+        # Aplikasi tidak boleh crash (HTTP 200 OK)
+        self.assertEqual(response.status_code, 200)
+        
+        # Pastikan hash password atau data sensitif tidak bocor di HTML
+        content = response.content.decode()
+        self.assertNotIn('pbkdf2_sha256', content)
