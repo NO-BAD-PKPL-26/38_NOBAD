@@ -836,7 +836,7 @@ Bagian pengujian ini memvalidasi kemampuan aplikasi dalam menangkal serangan _Cr
 | **TC-CI-01** | `test_xss_prevention_on_transaction_history` | Menginjeksikan _payload_ tag script fiktif ke kolom deskripsi. Memastikan _template layer_ melakukan _auto-escaping_ pada riwayat mutasi. | **PASSED** |
 | **TC-CI-02** | `test_xss_prevention_on_search_query`        | Memasukkan _payload_ berbahaya melalui query URL pencarian dan memastikan input dipantulkan dalam bentuk ter-_escape_ secara aman.        | **PASSED** |
 
-### 3. SQL Injection Prevention (Tugas Ojan)
+### 3. SQL Injection Prevention (Passed)
 
 Bagian pengujian ini memvalidasi keamanan formulir (*forms*) dan kueri *database* dari manipulasi perintah SQL, guna mencegah pembocoran data sensitif (*data breach*) dan mekanisme *login bypass*.
 
@@ -846,7 +846,7 @@ Bagian pengujian ini memvalidasi keamanan formulir (*forms*) dan kueri *database
 | **TC-SQLi-02** | `test_SQLi_02a_union_in_search_rejected` | Mengirimkan *payload* `UNION SELECT` pada fitur pencarian rekening untuk memastikan tidak ada data *table* lain yang terekspos. | **PASSED** |
 | **TC-SQLi-03** | `test_SQLi_03a_search_with_injection_payload_does_not_leak_data` | Memastikan *query builder* bawaan Django (ORM) melakukan *parameterized query* dan memperlakukan *payload* SQL sebagai teks biasa. | **PASSED** |
 
-### 4. CSRF Protection (Tugas Ojan)
+### 4. CSRF Protection (Passed)
 
 Bagian pengujian ini memastikan aplikasi aman dari serangan pembajakan sesi di mana penyerang (*attacker*) memaksa korban (*victim*) untuk mengeksekusi aksi yang tidak diinginkan pada aplikasi yang sedang terautentikasi.
 
