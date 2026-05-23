@@ -1,4 +1,4 @@
-# BankApp Secure — Mobile Banking Application
+# Tugas 3 — Secure Coding Implementation
 
 > **Tugas 3 — Secure Coding Implementation**  
 > Pengantar Keamanan Perangkat Lunak | Genap 2025/2026  
@@ -795,3 +795,61 @@ Buka di browser: **http://127.0.0.1:8000**
 
 
 _Dibuat oleh Kelompok NOBAD — PKPL Genap 2025/2026_
+
+---
+
+# Tugas 4 — Unit Testing dan Pentesting
+
+> **Tugas 4 — Unit Testing dan Pentesting**  
+> Pengantar Keamanan Perangkat Lunak | Genap 2025/2026  
+> Kelompok NOBAD
+
+---
+
+## Tautan Video Demo
+
+[ [PLACEHOLDER] Tautan Video Demo Youtube (Unlisted) ]
+
+---
+
+## A. Laporan Unit Testing
+
+Pengujian unit (Unit Testing) berfokus pada verifikasi ketahanan mekanisme keamanan yang diimplementasikan pada kode sumber aplikasi perbankan (BankApp). Pengujian dilakukan menggunakan modul bawaan Django `django.test.TestCase` dan objek `Client`.
+
+### 1. Broken Authentication Mitigation (Passed)
+
+Bagian pengujian ini memvalidasi efektivitas manajemen sesi, pembatasan hak akses minimum (_least privilege_), dan pencegahan enumerasi akun pada fitur autentikasi.
+
+| ID Test Case | Fungsi Uji                                      | Skenario Pengujian                                                                                                                                               | Status     |
+| :----------- | :---------------------------------------------- | :--------------------------------------------------------------------------------------------------------------------------------------------------------------- | :--------- |
+| **TC-BA-01** | `test_least_privilege_access`                   | Menguji apakah akun dengan peran (_role_) Nasabah diblokir secara otomatis (HTTP 403 Forbidden) saat memaksa mengakses halaman dasbor Teller.                    | **PASSED** |
+| **TC-BA-02** | `test_generic_login_error_message`              | Memastikan pesan kesalahan _login_ bersifat generik baik ketika _username_ tidak terdaftar maupun ketika _password_ salah, guna mencegah _username enumeration_. | **PASSED** |
+| **TC-BA-03** | `test_unauthenticated_user_redirected_to_login` | Memverifikasi bahwa pengguna yang belum terautentikasi (belum _login_) otomatis dialihkan ke halaman _login_.                                                    | **PASSED** |
+| **TC-BA-04** | `test_logout_only_accepts_post`                 | Menguji ketahanan mekanisme dengan memastikan pemanggilan fungsi _logout_ melalui metode GET ditolak.                                                            | **PASSED** |
+
+### 2. Code Injection Prevention (Passed)
+
+Bagian pengujian ini memvalidasi kemampuan aplikasi dalam menangkal serangan _Cross-Site Scripting_ (XSS).
+
+| ID Test Case | Fungsi Uji                                   | Skenario Pengujian                                                                                                                        | Status     |
+| :----------- | :------------------------------------------- | :---------------------------------------------------------------------------------------------------------------------------------------- | :--------- |
+| **TC-CI-01** | `test_xss_prevention_on_transaction_history` | Menginjeksikan _payload_ tag script fiktif ke kolom deskripsi. Memastikan _template layer_ melakukan _auto-escaping_ pada riwayat mutasi. | **PASSED** |
+| **TC-CI-02** | `test_xss_prevention_on_search_query`        | Memasukkan _payload_ berbahaya melalui query URL pencarian dan memastikan input dipantulkan dalam bentuk ter-_escape_ secara aman.        | **PASSED** |
+
+### 3. SQL Injection Prevention (Tugas Ojan)
+
+| ID Test Case   | Fungsi Uji      | Skenario Pengujian     | Status        |
+| :------------- | :-------------- | :--------------------- | :------------ |
+| **TC-SQLi-01** | `[Placeholder]` | _[Deskripsi skenario]_ | **[PENDING]** |
+
+### 4. CSRF Protection (Tugas Ojan)
+
+| ID Test Case   | Fungsi Uji      | Skenario Pengujian     | Status        |
+| :------------- | :-------------- | :--------------------- | :------------ |
+| **TC-CSRF-01** | `[Placeholder]` | _[Deskripsi skenario]_ | **[PENDING]** |
+
+---
+
+## B. Laporan Pentesting
+
+_(Bagian ini disediakan khusus untuk dokumentasi Tim Pentest: Fino, Dimaz, Natan). Laporannya disesuaikan aja sesuai kebutuhan_
