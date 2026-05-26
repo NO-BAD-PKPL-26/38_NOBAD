@@ -95,182 +95,17 @@ import re
 from django.core.exceptions import ValidationError
 
 def validate_no_injection(value):
-    """
-    Allowlist validation — menolak semua pola berbahaya.
-    TC-CI-01: XSS script tag
-    TC-CI-02: HTML injection (img onerror)
-    TC-CI-03: SSTI Django template injection
-    TC-CI-04c: Script di field keterangan transfer
-    """
-    dangerous_patterns = [
-        r'<script',              # TC-CI-01: XSS script tag
-        r'javascript:',          # TC-CI-01: JS protocol
-        r'on\w+\s*=',           # TC-CI-02: event handlers (onclick, onerror, dll)
-        r'<img[^>]+onerror',    # TC-CI-02: img onerror injection
-        r'<[a-zA-Z]+[^>]*>',   # HTML tag injection
-        r'\{\{',                 # TC-CI-03: SSTI opening {{
-        r'\}\}',                 # TC-CI-03: SSTI closing }}
-        r'\{%',                  # TC-CI-03: Django template tag
-        r'%\}',                  # TC-CI-03: Django template tag closing
-    ]
-    for pattern in dangerous_patterns:
-        if re.search(pattern, str(value), re.IGNORECASE):
-            raise ValidationError(
-                "Input mengandung karakter atau pola yang tidak diizinkan."
-            )
-    return value
-
-class TransferForm(forms.Form):
-    description = forms.CharField(
-        max_length=200,
-        required=False,
-        validators=[validate_no_injection]  # validator dipanggil otomatis
-    )
-    to_account_number = forms.CharField(
-        validators=[validate_account_number]  # allowlist: digit 10-16 saja
-    )
+  dangerous_patterns = [
+    r'<script', r'javascript:', r'on\w+\s*=',
+    r'\{\{', r'\}\}', r'\{%', r'%\}',
+  ]
+  for pattern in dangerous_patterns:
+    if re.search(pattern, str(value), re.IGNORECASE):
+      raise ValidationError(
+        "Input mengandung karakter atau pola yang tidak diizinkan."
+      )
+  return value
 ```
-
-```html
-<!--  SECURE — template -->
-<!-- Django auto-escape aktif: {{ variable }} di-escape otomatis -->
-<!-- <script> menjadi &lt;script&gt; — tidak dieksekusi browser -->
-<td>{{ t.description|truncatechars:30 }}</td>
-```
-
-#### Teknik Mitigasi
-
-1. **Allowlist Regex Validation** : fungsi `validate_no_injection()` menolak input yang mengandung pola berbahaya menggunakan regex. Pendekatan ini lebih aman daripada blacklist karena mendefinisikan apa yang _boleh_ ada, bukan yang _tidak boleh_.
-
-2. **Django Template Auto-Escaping** : semua variabel yang dirender dengan `{{ variable }}` secara otomatis di-escape oleh Django. Karakter `<`, `>`, `"`, `'`, `&` dikonversi ke HTML entities sehingga tidak bisa dieksekusi sebagai kode.
-
-3. **Input Validation di Form Layer** : validasi dilakukan di `forms.py` sebelum data masuk ke view atau database, memastikan data berbahaya tidak pernah tersimpan.
-
----
-
-### 2.2 Broken Authentication
-
-#### Vulnerability yang Dimitigasi
-
-| CWE | Vulnerability | Mitigasi pada Sistem |
-|---|---|---|
-| CWE-256 | Plaintext Storage of Password | Password disimpan menggunakan hashing PBKDF2-SHA256 bawaan Django, bukan plaintext |
-| CWE-916 | Weak Password Hash | Sistem tidak menggunakan hashing lemah seperti MD5 atau SHA1 |
-| CWE-307 | Brute Force | Login hanya dapat dilakukan melalui autentikasi Django, namun belum terdapat rate limiting otomatis |
-| CWE-287 | Improper Authentication | Akses halaman tertentu dibatasi menggunakan session authentication dan `@login_required` |
-| CWE-613 | Insufficient Session Expiration | Session pengguna dihapus setelah logout menggunakan Django session framework |
-| CWE-272 | Least Privilege Violation | Hak akses dibatasi berdasarkan role pengguna |
-| CWE-204 | Observable Response Discrepancy | Pesan error login dibuat konsisten agar tidak membocorkan username valid |
-
-#### Kode Sebelum (Vulnerable)
-
-```python
-#  VULNERABLE — autentikasi lemah
-
-# 1. Password disimpan plaintext (CWE-256)
-user.password = request.POST.get('password')  # "Nasabah@123" tersimpan apa adanya
-user.save()
-
-# 2. Tidak ada rate limiting (CWE-307)
-def login_view(request):
-    user = User.objects.get(username=username)
-    if user.password == password:  # bisa brute-force ribuan kali!
-        login(request, user)
-
-# 3. Error message berbeda (CWE-204)
-if not user_exists:
-    messages.error(request, 'Username tidak ditemukan.')  # bocorkan info!
-elif password_wrong:
-    messages.error(request, 'Password salah.')  # attacker tahu username valid
-
-# 4. Tidak ada role check (CWE-272)
-def teller_dashboard(request):
-    # siapapun bisa akses, termasuk nasabah!
-    return render(request, 'teller/dashboard.html')
-```
-
-#### Kode Sesudah (Secure)
-
-```python
-#  SECURE
-
-# 1. PBKDF2 hashing otomatis (TC-BA-01) — settings.py
-PASSWORD_HASHERS = [
-    'django.contrib.auth.hashers.PBKDF2PasswordHasher',  # 870.000 iterasi
-]
-# Password tersimpan sebagai: pbkdf2_sha256$870000$salt$hash=
-# Tidak bisa di-reverse menjadi password asli
-
-# 2. Rate limiting via middleware (TC-BA-02) — core/middleware.py
-class LoginAttemptMiddleware:
-    def __call__(self, request):
-        if request.path == '/login/' and request.method == 'POST':
-            ip = get_client_ip(request)
-            cutoff = timezone.now() - timedelta(seconds=300)  # 5 menit
-            recent_failures = LoginAttempt.objects.filter(
-                ip_address=ip,
-                success=False,
-                timestamp__gte=cutoff
-            ).count()
-            if recent_failures >= 5:  # lockout setelah 5x gagal
-                return HttpResponseForbidden("Akun terkunci sementara...")
-        return self.get_response(request)
-
-# 3. Error message sama untuk semua kasus (TC-BA-05) — core/views.py
-user = authenticate(request, username=username, password=password)
-if user is None:
-    LoginAttempt.objects.create(ip_address=ip, username=username, success=False)
-    messages.error(request, 'Username atau password salah.')  # SELALU sama
-
-# 4. Session security (TC-BA-03) — settings.py
-SESSION_COOKIE_HTTPONLY = True   # cookie tidak bisa diakses JavaScript
-SESSION_COOKIE_SAMESITE = 'Lax' # proteksi CSRF tambahan
-SESSION_COOKIE_AGE = 3600        # expired setelah 1 jam
-
-# 5. Least privilege dengan decorator (TC-BA-04) — core/views.py
-def role_required(*roles):
-    def decorator(view_func):
-        def wrapper(request, *args, **kwargs):
-            if not request.user.is_authenticated:
-                return redirect('login')
-            if request.user.role not in roles:
-                raise PermissionDenied  # 403 Forbidden
-            return view_func(request, *args, **kwargs)
-        return wrapper
-    return decorator
-
-@login_required
-@role_required('teller')      # hanya teller yang bisa akses
-def teller_dashboard(request): ...
-
-@login_required
-@role_required('supervisor')  # hanya supervisor yang bisa akses
-def supervisor_dashboard(request): ...
-```
-
-#### Teknik Mitigasi
-
-1. **PBKDF2-SHA256 Password Hashing** : Django menggunakan PBKDF2 dengan 870.000 iterasi secara default. Bahkan jika database bocor, password tidak bisa di-reverse.
-
-2. **Rate Limiting / Lockout** : `LoginAttemptMiddleware` mencatat setiap percobaan login dan memblokir IP setelah 5x gagal dalam 5 menit, mencegah brute force attack.
-
-3. **Generic Error Message** : pesan error login selalu "Username atau password salah" tanpa membedakan apakah username atau password yang salah, mencegah username enumeration attack.
-
-4. **Session Management** : `SESSION_COOKIE_HTTPONLY` mencegah JavaScript mengakses cookie session. Session di-invalidate saat logout via `logout(request)`.
-
-5. **Role-Based Access Control (Least Privilege)** : setiap view dilindungi decorator `@role_required()` yang memastikan hanya role yang berwenang dapat mengakses halaman tersebut.
-
----
-
-### 2.3 CSRF Protection
-
-#### Vulnerability yang Dimitigasi
-
-| CWE     | Nama                       | Deskripsi                                                                          |
-| ------- | -------------------------- | ---------------------------------------------------------------------------------- |
-| CWE-352 | Cross-Site Request Forgery | Request berbahaya dari situs lain yang memalsukan identitas user yang sedang login |
-
-**Skenario serangan:** Penyerang membuat halaman web jahat dengan form tersembunyi yang menarget endpoint transfer. Ketika korban (yang sedang login di BankApp) membuka halaman jahat tersebut, browser secara otomatis mengirim cookie session yang valid, sehingga server mengira request datang dari korban sendiri.
 
 #### Kode Sebelum (Vulnerable)
 
@@ -860,4 +695,254 @@ Bagian pengujian ini memastikan aplikasi aman dari serangan pembajakan sesi di m
 
 ## B. Laporan Pentesting
 
-_(Bagian ini disediakan khusus untuk dokumentasi Tim Pentest: Fino, Dimaz, Natan). Laporannya disesuaikan aja sesuai kebutuhan_
+### 1. TAHAP 1: PASSIVE & ACTIVE RECONNAISSANCE
+
+Tujuan tahap ini adalah memetakan attack surface aplikasi (port terbuka, service, teknologi, dan endpoint) sebelum analisis kerentanan yang lebih dalam.
+
+
+#### 1.1. Passive Reconnaissance (Pengamatan Pasif)
+
+Passive reconnaissance dilakukan dengan observasi source code dan browser DevTools tanpa melakukan eksploitasi aktif.
+
+##### 1.1.a Fingerprinting dari kode sumber
+
+| File | Hasil Observasi |
+| :--- | :--- |
+| `requirements.txt` | Dependency utama: `Django>=5.0,<6.0` (tidak ada framework web lain). |
+| `banking_app/settings.py` | `DEBUG=True`; `ALLOWED_HOSTS=['localhost','127.0.0.1']`; middleware stack mencakup `CsrfViewMiddleware`, `XFrameOptionsMiddleware`, dan `core.middleware.LoginAttemptMiddleware`; session config: `SESSION_COOKIE_HTTPONLY=True`, `SESSION_COOKIE_SAMESITE='Lax'`, `SESSION_COOKIE_AGE=3600`. |
+| `core/urls.py` | Endpoint utama: `/`, `/login/`, `/register/`, `/logout/`, `/dashboard/`, `/nasabah/`, `/nasabah/transfer/`, `/nasabah/mutasi/`, `/nasabah/cari-rekening/`, `/teller/`, `/teller/topup/`, `/supervisor/`, `/supervisor/accounts/`, `/supervisor/accounts/<int:account_id>/toggle/`. |
+
+Evidence:
+
+![Fingerprinting requirements](screenshots/pentesting/passive_active_reconnaissance/passive/fingerprinting_1.png)
+
+![Fingerprinting settings](screenshots/pentesting/passive_active_reconnaissance/passive/fingerprinting_2.png)
+
+![Fingerprinting urls](screenshots/pentesting/passive_active_reconnaissance/passive/fingerprinting_3.png)
+
+##### 1.1.b HTTP Header fingerprinting
+
+Pengamatan dilakukan via browser ke `http://127.0.0.1:8000/login/` pada tab Network > Headers.
+
+Header respons yang tercatat:
+
+| Header | Nilai |
+| :--- | :--- |
+| `X-Frame-Options` | `DENY` |
+| `Content-Type` | `text/html; charset=utf-8` |
+| `Set-Cookie` | `sessionid=...; HttpOnly; SameSite=Lax` |
+| `X-Content-Type-Options` | `nosniff` |
+
+Interpretasi singkat:
+- `X-Frame-Options: DENY` membantu mencegah clickjacking.
+- `HttpOnly` membatasi akses cookie dari JavaScript.
+- `SameSite=Lax` mengurangi risiko CSRF pada cross-site request tertentu.
+- `X-Content-Type-Options: nosniff` mencegah MIME sniffing.
+
+Evidence:
+
+![Header fingerprinting](screenshots/pentesting/passive_active_reconnaissance/passive/header_fingerprinting.png)
+
+##### 1.1.c Daftar endpoint publik (tanpa autentikasi)
+
+Endpoint yang dapat diakses tanpa login:
+
+| Endpoint | Method | Keterangan |
+| :--- | :--- | :--- |
+| `/login/` | GET, POST | Halaman login |
+| `/register/` | GET, POST | Halaman registrasi |
+
+Validasi akses endpoint terproteksi:
+
+- Akses `/nasabah/` tanpa login menghasilkan redirect ke `/login/` (sesuai expected behavior).
+
+Evidence:
+
+![Akses tanpa login redirect](screenshots/pentesting/passive_active_reconnaissance/passive/bukti_akses_tanpa_login.png)
+
+
+#### 1.2. Active Reconnaissance (Pemindaian Aktif)
+
+Active reconnaissance dilakukan terhadap localhost target `127.0.0.1` saat aplikasi Django berjalan pada port 8000.
+
+##### 1.2.a Tools dan command yang digunakan
+
+```bash
+# Basic version scan
+nmap -sV -p 8000 127.0.0.1
+
+# Scan lengkap (OS detection + version + scripts)
+nmap -A -p 8000 127.0.0.1
+```
+
+##### 1.2.b Hasil pemindaian nmap
+
+Ringkasan output yang diperoleh:
+
+| PORT | STATE | SERVICE | VERSION |
+| :--- | :--- | :--- | :--- |
+| 8000/tcp | open | http | WSGIServer 0.2 (Python 3.x) |
+
+Interpretasi:
+- Attack surface jaringan utama berada pada port 8000 (HTTP Django dev server/WSGI).
+- Tidak ada indikasi service non-web yang terekspos pada host lokal selama pengujian.
+- Hasil ini konsisten dengan arsitektur aplikasi berbasis Django yang dijalankan via `runserver`.
+
+Evidence:
+
+![Hasil nmap 1](screenshots/pentesting/passive_active_reconnaissance/active/hasil_nmap1.png)
+
+![Hasil nmap 2](screenshots/pentesting/passive_active_reconnaissance/active/hasil_nmap2.png)
+
+##### 1.2.c ZAP Passive Scan
+
+Konfigurasi pengujian:
+1. OWASP ZAP dijalankan dengan mode `Manual Explore`.
+2. Target URL: `http://127.0.0.1:8000`.
+3. Browser dari ZAP digunakan untuk menelusuri seluruh fitur aplikasi:
+     - Nasabah: login, dashboard, transfer, mutasi, cari rekening.
+     - Teller: login, dashboard, top-up.
+     - Supervisor: login, dashboard, kelola rekening, toggle rekening.
+     - Logout untuk seluruh role.
+
+Output:
+- Tab `Alerts` (daftar alert pasif dari ZAP).
+- Tab `Sites` (daftar URL yang berhasil direkam/crawled).
+
+Evidence:
+
+![ZAP alerts 1](screenshots/pentesting/passive_active_reconnaissance/active/zap_alerts1.png)
+
+![ZAP alerts 2](screenshots/pentesting/passive_active_reconnaissance/active/zap_alerts2.png)
+
+![ZAP sites 1](screenshots/pentesting/passive_active_reconnaissance/active/zap_sites1.png)
+
+![ZAP sites 2](screenshots/pentesting/passive_active_reconnaissance/active/zap_sites2.png)
+
+#### 1.3 Ringkasan Interpretasi Tahap Passive & Active Reconnaissance
+
+- Teknologi target berhasil diidentifikasi sebagai aplikasi web Django 5.x pada Python dengan session middleware aktif.
+- Endpoint publik terbatas pada autentikasi (`/login/`, `/register/`), sementara endpoint role-based terlindungi redirect/authorization.
+- Permukaan serangan jaringan terobservasi jelas pada service HTTP port 8000.
+- Enumerasi awal URL dan alert pasif telah terdokumentasi melalui OWASP ZAP untuk baseline tahap berikutnya.
+
+---
+
+### 3. TAHAP 3: SCANNING & ENUMERATION (PEMINDAIAN & ENUMERASI)
+
+Catatan pelaksanaan: bagian ini hanya memuat aktivitas yang benar-benar dilakukan secara manual/otomatis dan punya evidence screenshot.
+
+#### 3.1 ZAP Active Scan (Yang Dilakukan)
+
+Aktivitas:
+
+1. Melanjutkan session OWASP ZAP dari Tahap 1.
+2. Menjalankan active scan pada target `http://127.0.0.1:8000`.
+3. Meninjau alert serta detail alert (risk/confidence/description).
+4. Menyimpan report HTML.
+
+Evidence:
+
+![ZAP Active Scan Alerts](screenshots/pentesting/scanning_enumeration/otomatis/new_zap_alert.png)
+
+![ZAP Active Scan Alert Detail](screenshots/pentesting/scanning_enumeration/otomatis/new_zap_alert_detail.png)
+
+Report:
+
+- `screenshots/pentesting/scanning_enumeration/otomatis/ZAP-Report-NO BAD -BankApp.html`
+
+Ringkasan hasil Active Scan:
+
+Active Scan OWASP ZAP dijalankan terhadap endpoint aplikasi yang telah ditemukan pada tahap Manual Explore. Hasil scan menunjukkan bahwa sebagian besar plugin utama seperti SQL Injection, Cross Site Scripting, Path Traversal, Remote File Inclusion, Remote OS Command Injection, Server Side Code Injection, dan Server Side Template Injection tidak menghasilkan alert. Alert baru yang muncul terutama berasal dari User Agent Fuzzer, sehingga dikategorikan sebagai temuan tambahan yang perlu dianalisis lebih lanjut, bukan indikasi langsung adanya kerentanan injection utama.
+
+Catatan scope alert:
+
+Report ZAP juga mencatat beberapa alert dari domain eksternal seperti `fonts.googleapis.com` dan `fonts.gstatic.com` karena aplikasi memuat resource eksternal. Analisis utama pada laporan ini difokuskan pada aplikasi lokal `http://127.0.0.1:8000`, sehingga alert dari domain eksternal tidak dihitung sebagai temuan utama aplikasi.
+
+#### 3.2 Manual Scanning - Code Injection (Yang Dilakukan)
+
+Aktivitas:
+
+1. Uji payload XSS pada input form aplikasi.
+2. Uji payload SSTI pada input form aplikasi.
+3. Mencatat respons validasi.
+
+Ringkasan hasil aktual:
+
+| ID | Payload yang diuji | Endpoint/Field | Hasil |
+| :--- | :--- | :--- | :--- |
+| CI-01 | `<script>alert(1)</script>` | Input search pada `/nasabah/cari-rekening/` atau field yang diuji sesuai screenshot | Ditolak oleh validasi / tidak dieksekusi sebagai script |
+| CI-02 | `{{7*7}}` | Input search pada `/nasabah/cari-rekening/` atau field yang diuji sesuai screenshot | Ditolak oleh validasi / tidak dievaluasi menjadi `49` |
+
+Evidence:
+
+![Manual payload XSS](screenshots/pentesting/scanning_enumeration/manual/payload_xss.png)
+
+![Manual payload SSTI](screenshots/pentesting/scanning_enumeration/manual/payload_SSTI.png)
+
+#### 3.3 Manual Scanning - Broken Authentication (Yang Dilakukan)
+
+Aktivitas:
+
+1. Melakukan pengujian autentikasi manual (termasuk percobaan login gagal).
+2. Mengamati respons proteksi autentikasi pada aplikasi.
+
+Hasil aktual:
+
+- Percobaan login gagal berulang memicu proteksi autentikasi aplikasi.
+- Aplikasi menolak request login tidak valid dan/atau menampilkan mekanisme lockout sementara sesuai skenario pengujian.
+
+| ID | Endpoint | Metode | Hasil |
+| :--- | :--- | :--- | :--- |
+| BA-01 | `/login/` | Login gagal berulang menggunakan password salah | Proteksi autentikasi aktif / akun terkunci sementara |
+Evidence:
+
+![Manual broken authentication](screenshots/pentesting/scanning_enumeration/manual/broken_auth.png)
+
+#### 3.4 Manual Scanning - CSRF (Yang Dilakukan)
+
+Aktivitas:
+
+1. Uji CSRF manual menggunakan halaman/form pengujian.
+2. Mengirim request ke endpoint transfer di luar alur form normal.
+
+Hasil aktual:
+
+- Request uji CSRF ditolak (`403 Forbidden`).
+
+Evidence:
+
+![Manual CSRF test](screenshots/pentesting/scanning_enumeration/manual/csrf_test.png)
+
+#### 3.5 Manual Scanning - SQL Injection (Yang Dilakukan)
+
+Aktivitas:
+
+1. Uji payload SQL injection pada input pencarian.
+2. Mengamati error SQL dan potensi kebocoran data.
+
+Ringkasan hasil aktual:
+
+| ID | Payload yang diuji | Endpoint/Field | Hasil |
+| :--- | :--- | :--- | :--- |
+| SQLi-01 | `' OR '1'='1` | Input pencarian rekening pada `/nasabah/cari-rekening/` | Tidak ada error SQL dan tidak ada kebocoran data |
+
+Evidence:
+
+![Manual SQL injection test](screenshots/pentesting/scanning_enumeration/manual/sql_injection_test.png)
+
+#### 3.6 Daftar Endpoint/Pengujian yang Benar-Benar Dijalankan
+
+| No | Jenis Pengujian | Endpoint/Target | Metode | Hasil Ringkas |
+| :--- | :--- | :--- | :--- | :--- |
+| 1 | ZAP Active Scan | `http://127.0.0.1:8000` | Otomatis (OWASP ZAP) | Alert tercatat dan report HTML tersimpan |
+| 2 | Code Injection | `/nasabah/cari-rekening/` atau endpoint sesuai screenshot | Manual payload XSS/SSTI | Payload ditolak validasi / tidak dieksekusi |
+| 3 | Broken Authentication | `/login/` | Percobaan login gagal berulang | Proteksi autentikasi aktif / akun terkunci sementara |
+| 4 | CSRF | `/nasabah/transfer/` | Manual form CSRF tanpa `csrfmiddlewaretoken` | Request ditolak (`403 Forbidden`) |
+| 5 | SQL Injection | `/nasabah/cari-rekening/` | Manual payload SQLi `' OR '1'='1` | Tidak ada leak/error SQL teramati |
+
+#### 3.7 Kesimpulan Tahap 3 (Berdasarkan Aktivitas Aktual)
+
+Berdasarkan pengujian otomatis dan manual yang dilakukan, aplikasi telah diuji terhadap empat kategori minimum, yaitu code injection, broken authentication, CSRF, dan SQL injection. Hasil Active Scan OWASP ZAP tidak menunjukkan alert baru pada kategori injection utama seperti SQL Injection, XSS, Path Traversal, maupun Command Injection; alert baru yang muncul terutama berasal dari User Agent Fuzzer. Pengujian manual menunjukkan bahwa payload XSS/SSTI ditolak atau tidak dieksekusi, percobaan autentikasi gagal memicu proteksi autentikasi, request CSRF tanpa token ditolak dengan `403 Forbidden`, dan payload SQL injection tidak menghasilkan error SQL maupun kebocoran data.
+
+Dengan demikian, tidak ditemukan indikasi awal kerentanan kritis pada skenario dan endpoint yang diuji. Namun, hasil ini tidak dapat dianggap sebagai jaminan bahwa aplikasi sepenuhnya bebas dari kerentanan karena cakupan pengujian terbatas pada endpoint, payload, dan evidence yang terdokumentasi pada tahap ini. Output tahap ini digunakan sebagai baseline untuk analisis dan eksploitasi lanjutan pada tahap berikutnya.
