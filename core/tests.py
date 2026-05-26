@@ -174,8 +174,9 @@ class SQLiFormTests(TestCase):
 
     # 4. SQL INJECTION PREVENTION
 
-    """TC-SQLi-01 & 02: Memastikan form menolak payload SQLi dasar"""
-    def test_SQLi_01a_login_injection_in_username(self):
+    """TC-SQLi-01: Memastikan form menolak berbagai variasi payload SQLi dasar"""
+    
+    def test_SQLi_01a_login_bypass_payload_rejected(self):
         """LoginForm harus menolak username yang berisi bypass boolean SQL"""
         from core.forms import LoginForm
         form = LoginForm(data={
@@ -185,31 +186,90 @@ class SQLiFormTests(TestCase):
         # Sistem akan menganggap form tidak valid
         self.assertFalse(form.is_valid())
 
-    def test_SQLi_02a_union_in_search_rejected(self):
-        """Fitur pencarian harus kebal dari serangan UNION SELECT"""
+    def test_SQLi_01b_search_union_payload_rejected(self):
+        """Fitur pencarian harus menolak payload UNION SELECT"""
         from core.forms import AccountSearchForm
         form = AccountSearchForm(data={
             'query': "' UNION SELECT username, password FROM core_user --",
         })
+        # Aplikasi menolak query berbahaya dari form
         self.assertFalse(form.is_valid())
 
+    def test_SQLi_01c_transfer_drop_table_payload_rejected(self):
+        """Form transfer (Create/Update Endpoint) harus menolak payload DROP TABLE"""
+        from core.forms import TransferForm
+        form = TransferForm(data={
+            'to_account_number': "11112222'; DROP TABLE core_account;--",
+            'amount': '50000',
+        })
+        self.assertFalse(form.is_valid())
+
+
 class SQLiViewTests(TestCase):
-    """TC-SQLi-03: Memastikan ORM memparameterisasi input jahat"""
+    """TC-SQLi-02: Memastikan endpoint (View & ORM) aman dari bypass, kebocoran data, dan modifikasi ilegal"""
+    
     def setUp(self):
         self.client = Client()
         self.nasabah = User.objects.create_user(username='nasabah_sqli', password='TestPass@123', role='nasabah')
-        self.client.login(username='nasabah_sqli', password='TestPass@123')
+        self.nasabah_acc = Account.objects.create(user=self.nasabah, account_number='11112222', balance=500000)
+        
+        # Buat user lain untuk mengecek potensi kebocoran data
+        self.teller = User.objects.create_user(username='teller_rahasia', password='TestPass@123', role='teller')
+        self.initial_account_count = Account.objects.count()
 
-    def test_SQLi_03a_search_with_injection_payload_does_not_leak_data(self):
-        """Search menggunakan ORM tidak mengeksekusi payload SQL"""
-        # Kirim payload SQLi ke endpoint pencarian
+    def test_SQLi_02a_login_bypass_fails(self):
+        """Memastikan payload SQLi tidak menyebabkan Login Bypass"""
+        # Penyerang mencoba bypass form login
+        response = self.client.post(reverse('login'), {
+            'username': "admin' OR 1=1 --",
+            'password': "'' OR ''=''",
+        })
+        
+        # ASSERTION 1: Aplikasi tidak crash (HTTP 200, kembali render form login)
+        self.assertEqual(response.status_code, 200)
+        
+        # ASSERTION 2: Penyerang gagal mengautentikasi sistem (Session ID kosong)
+        self.assertNotIn('_auth_user_id', self.client.session)
+
+    def test_SQLi_02b_search_does_not_leak_data(self):
+        """Memastikan endpoint Search/Filter tidak mengalami Data Leakage"""
+        self.client.login(username='nasabah_sqli', password='TestPass@123')
+        
+        # Penyerang mencoba UNION SQLi pada search bar
         response = self.client.get(reverse('search_account'), {
             'query': "' UNION SELECT username, password FROM core_user --",
         })
         
-        # Aplikasi tidak boleh crash (HTTP 200 OK)
+        # ASSERTION 1: Sistem stabil dan tidak mengembalikan 500 error
         self.assertEqual(response.status_code, 200)
         
-        # Pastikan hash password atau data sensitif tidak bocor di HTML
         content = response.content.decode()
+        # ASSERTION 2: Tidak ada password hash yang terekspos ke respon
         self.assertNotIn('pbkdf2_sha256', content)
+        # ASSERTION 3: Data rahasia user lain tidak tercetak
+        self.assertNotIn('teller_rahasia', content)
+
+    def test_SQLi_02c_transfer_does_not_modify_database(self):
+        """Memastikan endpoint Update/Create kebal modifikasi destruktif (DROP TABLE)"""
+        self.client.login(username='nasabah_sqli', password='TestPass@123')
+        initial_balance = self.nasabah_acc.balance
+        
+        # Penyerang mencoba menghapus tabel saat transfer
+        response = self.client.post(reverse('transfer'), {
+            'to_account_number': "00000000'; DROP TABLE core_transaction; --",
+            'amount': '10000',
+            'description': 'SQLi attack'
+        })
+        
+        # ASSERTION 1: Transaksi gagal
+        self.assertEqual(response.status_code, 200)
+        
+        # ASSERTION 2: Struktur DB tidak rusak (Account masih berjumlah sama)
+        self.assertEqual(Account.objects.count(), self.initial_account_count)
+        
+        # ASSERTION 3: Saldo rekening tidak berkurang karena operasi ilegal
+        self.nasabah_acc.refresh_from_db()
+        self.assertEqual(self.nasabah_acc.balance, initial_balance)
+        
+        # ASSERTION 4: Data transaksi baru tidak terbentuk
+        self.assertEqual(Transaction.objects.count(), 0)
