@@ -831,6 +831,54 @@ Evidence:
 
 ---
 
+### 2. TAHAP 2: THREAT MODELING (PEMODELAN ANCAMAN)
+
+Pada tahap ini, kami memetakan potensi ancaman terhadap aplikasi **BankApp Secure** secara spesifik berdasarkan skenario perbankan, batasan kepercayaan (*trust boundary*), data sensitif, serta peran (*role*) pengguna.
+
+#### 2.1 Aktor, Hak Akses, & Batas Kepercayaan (Actors & Trust Boundary)
+
+Aplikasi memiliki tiga peran (*actors*) dengan tingkat kepercayaan tersegregasi:
+1. **Nasabah (External User):** Mengakses menu dashboard nasabah, melakukan transfer, melihat mutasi, dan mencari rekening nasabah lain.
+2. **Teller (Internal User):** Mengakses menu dashboard teller untuk melakukan top-up saldo rekening nasabah.
+3. **Supervisor Bank (Internal Admin):** Memiliki otorisasi penuh untuk mengaktifkan/menonaktifkan rekening nasabah, memonitor seluruh transaksi bank, serta mengaudit kegagalan login.
+
+Batas Kepercayaan (*Trust Boundary*) memisahkan lingkungan tidak tepercaya (browser nasabah / penyerang) dengan lingkungan tepercaya backend Django dan database SQLite lokal.
+
+```text
+[Browser Pengguna (Untrusted)] 
+        │
+        ▼ (HTTP Requests / Form Input)
+ ────────────────────────────────────── [TRUST BOUNDARY]
+        │
+        ▼
+[Django Backend / Form Validation (Trusted)]
+        │
+        ▼ (SQL Parameterized Queries via Django ORM)
+[SQLite Database (Trusted)]
+```
+
+#### 2.2 Identifikasi Aset & Data Sensitif
+
+1. **Aset Kredensial:** Data masuk berupa username dan *password hash* (tabel `core_user`).
+2. **Aset Finansial:** Saldo bank simulasi dan nomor rekening nasabah (tabel `core_account`).
+3. **Aset Transaksi:** Catatan riwayat mutasi transaksi transfer dan top-up (tabel `core_transaction`).
+4. **Sesi Pengguna:** Sesi terautentikasi (`sessionid` cookie).
+
+#### 2.3 Pemetaan Ancaman STRIDE & Prioritas Pengujian
+
+Kami memetakan ancaman secara khusus berdasarkan fungsionalitas BankApp Secure menggunakan model **STRIDE**:
+
+| ID | Kategori STRIDE | Deskripsi Ancaman & Alur Serangan | Likelihood | Impact | Tingkat Risiko | Prioritas Uji |
+| :--- | :--- | :--- | :---: | :---: | :---: | :---: |
+| **T-01** | Spoofing & Broken Auth | Penyerang menebak password nasabah via brute-force atau melakukan bypass login menggunakan kueri SQL. | High | High | **High** | **P1 (Kritis)** |
+| **T-02** | Tampering & SQLi | Penyerang menyisipkan payload SQL pada form transfer untuk memanipulasi kueri database (mengurangi/mengubah saldo secara ilegal). | Medium | High | **High** | **P1 (Kritis)** |
+| **T-03** | Info Disclosure & SQLi | Penyerang melakukan UNION SQLi pada form pencarian rekening untuk mencuri seluruh data password hash nasabah lain. | Medium | High | **High** | **P2 (Tinggi)** |
+| **T-04** | Tampering & XSS | Penyerang menginjeksikan tag `<script>` pada kolom berita transfer (Stored XSS) yang tersimpan di DB untuk mencuri session cookie nasabah lain. | High | Medium | **High** | **P2 (Tinggi)** |
+| **T-05** | Elevation of Privilege | Akun nasabah biasa mencoba mengakses langsung rute URL khusus supervisor (`/supervisor/dashboard/`). | High | High | **High** | **P2 (Tinggi)** |
+| **T-06** | CSRF Tampering | Situs jahat eksternal memaksa browser korban mengirim request POST transfer saldo ilegal tanpa disadari. | High | High | **High** | **P1 (Kritis)** |
+
+---
+
 ### 3. TAHAP 3: SCANNING & ENUMERATION (PEMINDAIAN & ENUMERASI)
 
 Catatan pelaksanaan: bagian ini hanya memuat aktivitas yang benar-benar dilakukan secara manual/otomatis dan punya evidence screenshot.
@@ -952,3 +1000,134 @@ Evidence:
 Berdasarkan pengujian otomatis dan manual yang dilakukan, aplikasi telah diuji terhadap empat kategori minimum, yaitu code injection, broken authentication, CSRF, dan SQL injection. Hasil Active Scan OWASP ZAP tidak menunjukkan alert baru pada kategori injection utama seperti SQL Injection, XSS, Path Traversal, maupun Command Injection; alert baru yang muncul terutama berasal dari User Agent Fuzzer. Pengujian manual menunjukkan bahwa payload XSS/SSTI ditolak atau tidak dieksekusi, percobaan autentikasi gagal memicu proteksi autentikasi, request CSRF tanpa token ditolak dengan `403 Forbidden`, dan payload SQL injection tidak menghasilkan error SQL maupun kebocoran data.
 
 Dengan demikian, tidak ditemukan indikasi awal kerentanan kritis pada skenario dan endpoint yang diuji. Namun, hasil ini tidak dapat dianggap sebagai jaminan bahwa aplikasi sepenuhnya bebas dari kerentanan karena cakupan pengujian terbatas pada endpoint, payload, dan evidence yang terdokumentasi pada tahap ini. Output tahap ini digunakan sebagai baseline untuk analisis dan eksploitasi lanjutan pada tahap berikutnya.
+
+---
+
+### 4. TAHAP 4: EXPLOITATION & TESTING (EKSPLOITASI & PENGUJIAN)
+
+Kami melakukan upaya eksploitasi aktif dan terkontrol terhadap target rute perbankan. Karena aplikasi telah menerapkan pertahanan *secure coding* sejak awal, bagian ini memaparkan **Proof of Concept (PoC) kegagalan eksploitasi** dan analisis ketahanan proteksi aplikasi dari 4 kategori utama.
+
+#### 4.1 SQL/Database Injection (SQLi) Exploitation
+* **Reference No:** WEB_VUL_01
+* **Risk Rating:** **Secured (Mitigated - Sebelumnya High)**
+* **Tools Used:** Browser DevTools, Manual SQL Payload
+* **Vulnerability Identified by / How It Was Discovered:** Manual Analysis & Code Audit
+* **Vulnerable URLs / IP Address:** 
+  * `http://127.0.0.1:8000/login/` (parameter `username`)
+  * `http://127.0.0.1:8000/nasabah/cari-rekening/` (parameter `query`)
+
+##### Skenario Eksploitasi & Langkah Reproduksi:
+1. **Upaya Login Bypass:** Buka rute `/login/`. Masukkan payload `' OR '1'='1' --` pada kolom **Username** dan klik **Login**.
+2. **Hasil Respons HTTP:**
+   ```http
+   HTTP/1.1 200 OK
+   Content-Type: text/html; charset=utf-8
+
+   <!-- Form mengembalikan error validasi karakter -->
+   <ul class="errorlist"><li>username: Username mengandung karakter yang tidak valid.</li></ul>
+   ```
+3. **Analisis Kegagalan Serangan:** Serangan diblokir sukses di forms layer (`forms.py` line 78) yang melarang karakter khusus selain huruf, angka, dan `@/./+/-/_`.
+4. **Upaya Data Extraction via Cari Rekening:** Login sebagai nasabah. Buka `/nasabah/cari-rekening/`. Masukkan payload: `' UNION SELECT username, password, null FROM core_user --` dan klik **Cari**.
+5. **Hasil Respons HTTP:** Input diblokir oleh `clean_query()` di `forms.py` (line 145-156) dengan respons error: `"Karakter tidak diizinkan! Terdeteksi potensi SQL Injection."`
+
+##### Evidence Eksploitasi Gagal:
+
+![Bypass Login SQLi Gagal](screenshots/TC-SQLi-01_NOBAD.png)
+
+![Search UNION SQLi Gagal](screenshots/TC-SQLi-02_NOBAD.png)
+
+---
+
+#### 4.2 Code Injection & Cross-Site Scripting (XSS) Exploitation
+* **Reference No:** WEB_VUL_02
+* **Risk Rating:** **Secured (Mitigated - Sebelumnya High)**
+* **Tools Used:** Browser DevTools
+* **Vulnerability Identified by / How It Was Discovered:** Manual Analysis
+* **Vulnerable URLs / IP Address:**
+  * `http://127.0.0.1:8000/nasabah/transfer/` (parameter `description`)
+  * `http://127.0.0.1:8000/nasabah/cari-rekening/` (parameter `query`)
+
+##### Skenario Eksploitasi & Langkah Reproduksi:
+1. **Upaya Stored XSS via Berita Transfer:** Buka menu transfer dana. Masukkan nomor rekening tujuan valid, jumlah transfer, dan pada kolom **Berita / Keterangan**, masukkan payload: `<script>alert('Stored XSS')</script>`. Klik **Kirim**.
+2. **Hasil Respons HTTP:**
+   ```http
+   HTTP/1.1 200 OK
+
+   <!-- Error validasi form ditayangkan -->
+   <p class="error-msg">Input mengandung karakter atau pola yang tidak diizinkan.</p>
+   ```
+3. **Analisis Kegagalan Serangan:** Tag `<script>` disaring dan ditolak langsung oleh kustom validator `validate_no_injection` di `forms.py` (line 10-38) sebelum mencapai database.
+4. **Upaya Reflected XSS via URL:** Buka tautan berikut pada browser:
+   `http://127.0.0.1:8000/nasabah/cari-rekening/?query=%3Cscript%3Ealert(1)%3C/script%3E`
+5. **Hasil Respons HTTP:** Nilai payload dipantulkan di layar pencarian, tetapi dirender aman sebagai teks biasa: `Cari rekening: &lt;script&gt;alert(1)&lt;/script&gt;` berkat fitur **Django Auto-escaping** bawaan template engine.
+
+##### Evidence Eksploitasi Gagal:
+
+![Stored XSS Transfer Gagal](screenshots/TC-CI-01_NOBAD.png)
+
+![Reflected XSS Search Gagal](screenshots/TC-CI-02_NOBAD.png)
+
+---
+
+#### 4.3 Broken Authentication & Authorization Check
+* **Reference No:** WEB_VUL_03
+* **Risk Rating:** **Secured (Mitigated - Sebelumnya High)**
+* **Tools Used:** Browser DevTools, Python Script
+* **Vulnerability Identified by / How It Was Discovered:** Manual Analysis
+* **Vulnerable URLs / IP Address:**
+  * `http://127.0.0.1:8000/login/` (Brute Force)
+  * `http://127.0.0.1:8000/supervisor/dashboard/` (Akses langsung rute)
+
+##### Skenario Eksploitasi & Langkah Reproduksi:
+1. **Eksploitasi Brute Force Login:** Masuk ke halaman login. Masukkan username nasabah valid dengan password salah sebanyak 5 kali berturut-turut.
+2. **Hasil Respons HTTP pada Percobaan ke-6:**
+   ```http
+   HTTP/1.1 403 Forbidden
+   Content-Type: text/html; charset=UTF-8
+
+   <h2>Akun Terkunci Sementara</h2>
+   <p>Terlalu banyak percobaan login gagal. Silakan coba lagi dalam 5 menit.</p>
+   ```
+3. **Analisis Kegagalan Serangan:** IP penyerang diblokir sukses selama 5 menit oleh `LoginAttemptMiddleware` (`core/middleware.py`).
+4. **Upaya Privilege Escalation:** Login sebagai nasabah biasa. Ketik secara paksa URL panel supervisor di browser: `http://127.0.0.1:8000/supervisor/accounts/`.
+5. **Hasil Respons HTTP:** Server mengembalikan respons **HTTP 403 Forbidden (Akses Ditolak)** karena view dilindungi secara ketat oleh decorator `@role_required('supervisor')` di `views.py`.
+
+##### Evidence Eksploitasi Gagal:
+
+![Akun Terkunci Lockout](screenshots/TC-BA-02_NOBAD.png)
+
+![Privilege Escalation Ditolak](screenshots/TC-BA-04_NOBAD.png)
+
+---
+
+#### 4.4 Cross-Site Request Forgery (CSRF) Exploitation
+* **Reference No:** WEB_VUL_04
+* **Risk Rating:** **Secured (Mitigated - Sebelumnya High)**
+* **Tools Used:** Browser, HTML Exploit File
+* **Vulnerability Identified by / How It Was Discovered:** Manual Analysis
+* **Vulnerable URLs / IP Address:** `/nasabah/transfer/`
+
+##### Skenario Eksploitasi & Langkah Reproduksi:
+1. Buat file `csrf_attack.html` lokal berisi form transfer dana otomatis tanpa menyertakan input `csrfmiddlewaretoken`:
+   ```html
+   <form id="attackForm" method="POST" action="http://127.0.0.1:8000/nasabah/transfer/">
+       <input type="hidden" name="to_account_number" value="3752048829">
+       <input type="hidden" name="amount" value="500000">
+   </form>
+   <script>document.getElementById("attackForm").submit();</script>
+   ```
+2. Pastikan Anda sedang login di BankApp. Lalu buka berkas `csrf_attack.html` tersebut di browser.
+3. **Hasil Respons HTTP:**
+   ```http
+   HTTP/1.1 403 Forbidden
+   Content-Type: text/html
+
+   <h1>CSRF verification failed. Request aborted.</h1>
+   ```
+4. **Analisis Kegagalan Serangan:** Request diblokir secara otomatis oleh Django `CsrfViewMiddleware` karena absennya token anti-CSRF valid pada request POST.
+
+##### Evidence Eksploitasi Gagal:
+
+![Serangan CSRF Diblokir](screenshots/TC-CSRF-03_NOBAD.png)
+
+---
