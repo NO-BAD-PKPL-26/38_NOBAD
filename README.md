@@ -1130,4 +1130,42 @@ Kami melakukan upaya eksploitasi aktif dan terkontrol terhadap target rute perba
 
 ![Serangan CSRF Diblokir](screenshots/TC-CSRF-03_NOBAD.png)
 
+### 5. TAHAP 5: REPORTING & REMEDIATION (PELAPORAN & REMEDIASI)
+
+Bagian akhir ini memprioritaskan perbaikan keamanan dan memberikan rekomendasi peningkatan berkelanjutan demi menjaga keamanan jangka panjang.
+
+#### 5.1 Prioritas Peningkatan Keamanan Berdasarkan Risiko (Risk Prioritization)
+
+Meskipun kontrol keamanan lokal saat ini sangat baik (Mitigated), untuk menjamin keamanan penuh saat aplikasi dideploy ke produksi, kami menetapkan prioritas peningkatan keamanan teknis berikut:
+
+| Prioritas | ID Temuan | Topik Kerentanan | Deskripsi Tindakan Perbaikan Teknis | Severity | Target Waktu Implementasi |
+| :---: | :--- | :--- | :--- | :---: | :---: |
+| **1** | WEB_VUL_04 | Proteksi CSRF Lanjutan | Terapkan atribut SameSite = 'Strict' untuk membatasi pengiriman cookie sesi secara absolut hanya untuk rute internal domain bank resmi. | High | Segera (Sebelum rilis produksi) |
+| **2** | WEB_VUL_03 | Broken Auth (Log) | Pindahkan penyimpanan log audit kegagalan login (`LoginAttempt`) ke log sistem operasi terproteksi (seperti file syslog / `auth.log`) untuk mencegah modifikasi log jika database utama SQLite terkompromi. | High | 1 Minggu |
+| **3** | WEB_VUL_02 | Security Headers (XSS) | Terapkan Content Security Policy (CSP) HTTP Header untuk membatasi eksekusi inline skrip JavaScript pihak ketiga di browser nasabah. | Medium | 2 Minggu |
+| **4** | WEB_VUL_01 | Database Hardening | Membatasi hak akses akun sistem database (Least Privilege) dan menerapkan Web Application Firewall (WAF) untuk menyaring kueri dinamis sebelum menyentuh aplikasi Django. | Medium | 1 Bulan |
+
+#### 5.2 Detail Teknis Rekomendasi Remediasi Produksi (Django & SQLite)
+
+##### A. Konfigurasi SSL/TLS & Cookie Secure (settings.py)
+Mengamankan transmisi data agar terhindar dari penyadapan data perbankan sensitif di jaringan publik (*Man-in-the-Middle Attack*).
+python
+# settings.py - Tambahkan konfigurasi berikut untuk lingkungan produksi:
+SECURE_SSL_REDIRECT = True           # Paksa pengalihan semua koneksi HTTP ke HTTPS
+SESSION_COOKIE_SECURE = True         # Cookie sesi hanya ditransmisikan lewat jalur terenkripsi HTTPS
+CSRF_COOKIE_SECURE = True            # Cookie CSRF hanya dikirim lewat jalur HTTPS
+SESSION_COOKIE_SAMESITE = 'Strict'   # Batasi cookie sesi hanya dikirim pada request origin yang sama
+
+##### B. Pengaturan Content Security Policy (CSP) Header
+Mencegah injeksi kode dan mitigasi XSS tingkat lanjut dengan membatasi asal muasal eksekusi skrip:
+python
+# settings.py - Menggunakan django-csp middleware
+MIDDLEWARE += ['csp.middleware.CSPMiddleware']
+
+CSP_DEFAULT_SRC = ("'self'",)
+CSP_SCRIPT_SRC = ("'self'",)         # Hanya izinkan eksekusi file JS internal lokal
+CSP_STYLE_SRC = ("'self'", "fonts.googleapis.com")
+
 ---
+## Kesimpulan Akhir Laporan Pentesting
+Seluruh tahapan penetration testing dari **Tahap 1 hingga Tahap 5** telah berhasil dilakukan secara menyeluruh dan terstruktur. Aplikasi **BankApp Secure** berstatus **Aman dan Terverifikasi Tangguh** dari ancaman siber utama berdasarkan OWASP Top 10 berkat mitigasi pertahanan secure coding yang andal.
