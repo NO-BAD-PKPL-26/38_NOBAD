@@ -649,47 +649,50 @@ _Dibuat oleh Kelompok NOBAD — PKPL Genap 2025/2026_
 
 ## A. Laporan Unit Testing
 
-Pengujian unit (Unit Testing) berfokus pada verifikasi ketahanan mekanisme keamanan yang diimplementasikan pada kode sumber aplikasi perbankan (BankApp). Pengujian dilakukan menggunakan modul bawaan Django `django.test.TestCase` dan objek `Client`.
+Pengujian unit (*Unit Testing*) dilakukan untuk memverifikasi ketahanan sistem terhadap empat ancaman keamanan utama: *Broken Authentication*, *Code Injection* (XSS), *CSRF*, dan *SQL Injection*. Seluruh pengujian menggunakan `django.test.TestCase` dengan *assertion* yang ketat terhadap integritas *database*, status sesi, dan integritas data.
 
 ### 1. Broken Authentication Mitigation (Passed)
 
-Bagian pengujian ini memvalidasi efektivitas manajemen sesi, pembatasan hak akses minimum (_least privilege_), dan pencegahan enumerasi akun pada fitur autentikasi.
-
-| ID Test Case | Fungsi Uji                                      | Skenario Pengujian                                                                                                                                               | Status     |
-| :----------- | :---------------------------------------------- | :--------------------------------------------------------------------------------------------------------------------------------------------------------------- | :--------- |
-| **TC-BA-01** | `test_least_privilege_access`                   | Menguji apakah akun dengan peran (_role_) Nasabah diblokir secara otomatis (HTTP 403 Forbidden) saat memaksa mengakses halaman dasbor Teller.                    | **PASSED** |
-| **TC-BA-02** | `test_generic_login_error_message`              | Memastikan pesan kesalahan _login_ bersifat generik baik ketika _username_ tidak terdaftar maupun ketika _password_ salah, guna mencegah _username enumeration_. | **PASSED** |
-| **TC-BA-03** | `test_unauthenticated_user_redirected_to_login` | Memverifikasi bahwa pengguna yang belum terautentikasi (belum _login_) otomatis dialihkan ke halaman _login_.                                                    | **PASSED** |
-| **TC-BA-04** | `test_logout_only_accepts_post`                 | Menguji ketahanan mekanisme dengan memastikan pemanggilan fungsi _logout_ melalui metode GET ditolak.                                                            | **PASSED** |
+| ID Test Case | Fungsi Uji | Skenario Pengujian | Status |
+| :--- | :--- | :--- | :--- |
+| **TC-BA-01** | `test_least_privilege_access` | Memastikan role Nasabah tidak dapat mengakses dasbor Teller (HTTP 403 Forbidden). | **PASSED** |
+| **TC-BA-02** | `test_generic_login_error_message` | Memverifikasi pesan *error login* seragam untuk mencegah *username enumeration*. | **PASSED** |
+| **TC-BA-03** | `test_unauthenticated_user_redirected_to_login` | Memastikan akses dasbor tanpa *login* ditolak (HTTP 302 Redirect). | **PASSED** |
+| **TC-BA-04** | `test_logout_only_accepts_post` | Mencegah *logout* via GET (jebakan *link*) dengan memastikan *logout* hanya menerima metode POST. | **PASSED** |
 
 ### 2. Code Injection Prevention (Passed)
 
-Bagian pengujian ini memvalidasi kemampuan aplikasi dalam menangkal serangan _Cross-Site Scripting_ (XSS).
-
-| ID Test Case | Fungsi Uji                                   | Skenario Pengujian                                                                                                                        | Status     |
-| :----------- | :------------------------------------------- | :---------------------------------------------------------------------------------------------------------------------------------------- | :--------- |
-| **TC-CI-01** | `test_xss_prevention_on_transaction_history` | Menginjeksikan _payload_ tag script fiktif ke kolom deskripsi. Memastikan _template layer_ melakukan _auto-escaping_ pada riwayat mutasi. | **PASSED** |
-| **TC-CI-02** | `test_xss_prevention_on_search_query`        | Memasukkan _payload_ berbahaya melalui query URL pencarian dan memastikan input dipantulkan dalam bentuk ter-_escape_ secara aman.        | **PASSED** |
+| ID Test Case | Fungsi Uji | Skenario Pengujian | Status |
+| :--- | :--- | :--- | :--- |
+| **TC-CI-01** | `test_xss_prevention_on_transaction_history` | Menguji *Stored XSS* pada deskripsi transaksi; memastikan *template* melakukan *auto-escaping*. | **PASSED** |
+| **TC-CI-02** | `test_xss_prevention_on_search_query` | Menguji *Reflected XSS* pada fitur pencarian; memastikan input di-*escape* sebelum dirender. | **PASSED** |
 
 ### 3. SQL Injection Prevention (Passed)
 
-Bagian pengujian ini memvalidasi keamanan formulir (*forms*) dan kueri *database* dari manipulasi perintah SQL, guna mencegah pembocoran data sensitif (*data breach*) dan mekanisme *login bypass*.
-
-| ID Test Case   | Fungsi Uji      | Skenario Pengujian     | Status        |
-| :------------- | :-------------- | :--------------------- | :------------ |
-| **TC-SQLi-01** | `test_SQLi_01a_login_injection_in_username` | Menginput *payload bypass boolean* (`' OR '1'='1' --`) pada *form login* untuk memastikan form menolaknya. | **PASSED** |
-| **TC-SQLi-02** | `test_SQLi_02a_union_in_search_rejected` | Mengirimkan *payload* `UNION SELECT` pada fitur pencarian rekening untuk memastikan tidak ada data *table* lain yang terekspos. | **PASSED** |
-| **TC-SQLi-03** | `test_SQLi_03a_search_with_injection_payload_does_not_leak_data` | Memastikan *query builder* bawaan Django (ORM) melakukan *parameterized query* dan memperlakukan *payload* SQL sebagai teks biasa. | **PASSED** |
-
-### 4. CSRF Protection (Passed)
-
-Bagian pengujian ini memastikan aplikasi aman dari serangan pembajakan sesi di mana penyerang (*attacker*) memaksa korban (*victim*) untuk mengeksekusi aksi yang tidak diinginkan pada aplikasi yang sedang terautentikasi.
+Pengujian mencakup validasi *form* dan *view* terhadap *payload* destruktif untuk memastikan *database* tetap aman.
 
 | ID Test Case | Fungsi Uji | Skenario Pengujian | Status |
 | :--- | :--- | :--- | :--- |
-| **TC-CSRF-01**| `test_CSRF_01a_csrf_middleware_in_settings` | Memverifikasi komponen perlindungan `CsrfViewMiddleware` telah terdaftar dan aktif secara global di dalam *settings* aplikasi. | **PASSED** |
-| **TC-CSRF-02**| `test_CSRF_02a_transfer_without_token_returns_403`| Mensimulasikan POST *request* pemindahan dana (*transfer*) uang tanpa memberikan *token* CSRF. Memastikan permintaan tersebut diblokir (HTTP 403). | **PASSED** |
-| **TC-CSRF-03**| `test_CSRF_03a_no_transaction_created_on_csrf_attack` | Memastikan *database* terjaga integritasnya (*atomicity*) dengan mengecek bahwa tidak ada saldo terpotong dan tidak ada catatan transaksi baru saat serangan CSRF terjadi. | **PASSED** |
+| **TC-SQLi-01a**| `test_SQLi_01a_login_injection_in_username` | Menguji *form login* menolak *payload bypass boolean* (`' OR '1'='1' --`). | **PASSED** |
+| **TC-SQLi-01b**| `test_SQLi_01b_search_union_payload_rejected` | Menguji *form pencarian* menolak *payload* `UNION SELECT`. | **PASSED** |
+| **TC-SQLi-01c**| `test_SQLi_01c_transfer_drop_table_payload_rejected`| Menguji *form transfer* menolak *payload* destruktif (`DROP TABLE`). | **PASSED** |
+| **TC-SQLi-02a**| `test_SQLi_02a_login_bypass_fails` | Memastikan *view* menolak *payload* SQLi dan gagal memberikan akses sesi (tidak terjadi *login bypass*). | **PASSED** |
+| **TC-SQLi-02b**| `test_SQLi_02b_search_does_not_leak_data` | Memastikan query ORM tidak membocorkan data sensitif (*hash password*) meskipun diberikan *payload* `UNION`. | **PASSED** |
+| **TC-SQLi-02c**| `test_SQLi_02c_transfer_does_not_modify_database`| Memastikan operasi ilegal (`DROP TABLE`) tidak merusak integritas *database* dan saldo nasabah aman. | **PASSED** |
+
+### 4. CSRF Protection (Passed)
+
+| ID Test Case | Fungsi Uji | Skenario Pengujian | Status |
+| :--- | :--- | :--- | :--- |
+| **TC-CSRF-01**| `test_CSRF_01a_csrf_middleware_in_settings` | Verifikasi `CsrfViewMiddleware` terdaftar di *settings*. | **PASSED** |
+| **TC-CSRF-02**| `test_CSRF_02a_transfer_without_token_returns_403`| Menguji *request* transfer tanpa *token* ditolak (HTTP 403). | **PASSED** |
+| **TC-CSRF-03**| `test_CSRF_03a_no_transaction_created_on_csrf_attack` | Memastikan *database* tidak memproses transaksi ilegal (saldo tidak terpotong). | **PASSED** |
+
+---
+
+### Bukti Hasil Eksekusi Unit Testing:
+![Screenshot Terminal Hasil Test](screenshots/terminal_test_ok.png)
+*(Catatan: Unit test ini dijalankan dengan command `python manage.py test core --verbosity=2` agar bisa melihat secara detail bahwa semua fungsi test case di atas berjalan dan lulus.)*
 
 ---
 
