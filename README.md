@@ -643,7 +643,7 @@ _Dibuat oleh Kelompok NOBAD — PKPL Genap 2025/2026_
 
 ## Tautan Video Demo
 
-[ [PLACEHOLDER] Tautan Video Demo Youtube (Unlisted) ]
+https://youtu.be/9Wbflk-cPYc
 
 ---
 
