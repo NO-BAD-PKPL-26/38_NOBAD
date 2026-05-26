@@ -622,14 +622,14 @@ Buka di browser: **http://127.0.0.1:8000**
 
 ---
 
-## 6. Video Demo
+## 6. Video Demo TK 3
 
-> _(placeholder)_
-
-**Link:** [YouTube — BankApp Secure Demo](https://youtu.be/4SJo829-nA4)
+> **Link:** [YouTube — BankApp Secure Demo TK 3](https://youtu.be/4SJo829-nA4)
 
 
-_Dibuat oleh Kelompok NOBAD — PKPL Genap 2025/2026_
+_Dibuat oleh Kelompok NOBAD — PKPL Genap 2025/2026__
+
+
 
 ---
 
@@ -641,9 +641,12 @@ _Dibuat oleh Kelompok NOBAD — PKPL Genap 2025/2026_
 
 ---
 
-## Tautan Video Demo
+## Tautan Video Demo TK 4
 
-[ [PLACEHOLDER] Tautan Video Demo Youtube (Unlisted) ]
+> **Link:** [YouTube — BankApp Secure Demo TK 4](isi link disini)
+
+
+_Dibuat oleh Kelompok NOBAD — PKPL Genap 2025/2026__
 
 ---
 
