@@ -874,8 +874,8 @@ Ringkasan hasil aktual:
 
 | ID | Payload yang diuji | Endpoint/Field | Hasil |
 | :--- | :--- | :--- | :--- |
-| CI-01 | `<script>alert(1)</script>` | Input search pada `/nasabah/cari-rekening/` atau field yang diuji sesuai screenshot | Ditolak oleh validasi / tidak dieksekusi sebagai script |
-| CI-02 | `{{7*7}}` | Input search pada `/nasabah/cari-rekening/` atau field yang diuji sesuai screenshot | Ditolak oleh validasi / tidak dievaluasi menjadi `49` |
+| CI-01 | `<script>alert(1)</script>` | Input search pada `/nasabah/cari-rekening/` | Ditolak oleh validasi / tidak dieksekusi sebagai script |
+| CI-02 | `{{7*7}}` | Input search pada `/nasabah/cari-rekening/`| Ditolak oleh validasi / tidak dievaluasi menjadi `49` |
 
 Evidence:
 
@@ -898,6 +898,7 @@ Hasil aktual:
 | ID | Endpoint | Metode | Hasil |
 | :--- | :--- | :--- | :--- |
 | BA-01 | `/login/` | Login gagal berulang menggunakan password salah | Proteksi autentikasi aktif / akun terkunci sementara |
+
 Evidence:
 
 ![Manual broken authentication](screenshots/pentesting/scanning_enumeration/manual/broken_auth.png)
@@ -911,7 +912,9 @@ Aktivitas:
 
 Hasil aktual:
 
-- Request uji CSRF ditolak (`403 Forbidden`).
+| ID | Endpoint | Metode | Hasil |
+| :--- | :--- | :--- | :--- |
+| CSRF-01 | `/nasabah/transfer/` | Submit form eksternal tanpa `csrfmiddlewaretoken` | Ditolak (`403 Forbidden`) |
 
 Evidence:
 
@@ -939,7 +942,7 @@ Evidence:
 | No | Jenis Pengujian | Endpoint/Target | Metode | Hasil Ringkas |
 | :--- | :--- | :--- | :--- | :--- |
 | 1 | ZAP Active Scan | `http://127.0.0.1:8000` | Otomatis (OWASP ZAP) | Alert tercatat dan report HTML tersimpan |
-| 2 | Code Injection | `/nasabah/cari-rekening/` atau endpoint sesuai screenshot | Manual payload XSS/SSTI | Payload ditolak validasi / tidak dieksekusi |
+| 2 | Code Injection | `/nasabah/cari-rekening/` | Manual payload XSS/SSTI | Payload ditolak validasi / tidak dieksekusi |
 | 3 | Broken Authentication | `/login/` | Percobaan login gagal berulang | Proteksi autentikasi aktif / akun terkunci sementara |
 | 4 | CSRF | `/nasabah/transfer/` | Manual form CSRF tanpa `csrfmiddlewaretoken` | Request ditolak (`403 Forbidden`) |
 | 5 | SQL Injection | `/nasabah/cari-rekening/` | Manual payload SQLi `' OR '1'='1` | Tidak ada leak/error SQL teramati |
